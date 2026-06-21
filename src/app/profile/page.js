@@ -25,6 +25,18 @@ export default function ProfilePage() {
     // User Orders State
     const [userOrders, setUserOrders] = useState([])
     const [loadingOrders, setLoadingOrders] = useState(true)
+    const [orderFilterStatus, setOrderFilterStatus] = useState('Semua')
+    
+    // Order Detail Modal State
+    const [selectedOrder, setSelectedOrder] = useState(null)
+    const [orderDetailItems, setOrderDetailItems] = useState([])
+    const [loadingOrderDetails, setLoadingOrderDetails] = useState(false)
+    
+    // Return Request State
+    const [returnModalOpen, setReturnModalOpen] = useState(false)
+    const [returnReason, setReturnReason] = useState("")
+    const [orderToReturn, setOrderToReturn] = useState(null)
+    const [submittingReturn, setSubmittingReturn] = useState(false)
 
     const [gender, setGender] = useState("")
     const [birthDate, setBirthDate] = useState("")
@@ -54,9 +66,50 @@ export default function ProfilePage() {
     // Status States
     const [uploading, setUploading] = useState(false)
     const [saving, setSaving] = useState(false)
+    const [roleRequestStatus, setRoleRequestStatus] = useState(null)
+    const [roleRequestId, setRoleRequestId] = useState(null)
     const fileInputRef = useRef(null)
 
     useEffect(() => {
+        // Fetch role requests status
+        async function fetchRoleRequest(userId) {
+            const supabase = createClient()
+            try {
+                const { data, error } = await supabase
+                    .from('role_requests')
+                    .select('*')
+                    .eq('user_id', userId)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                
+                if (data && data.length > 0) {
+                    const req = data[0]
+                    setRoleRequestStatus(req.status)
+                    setRoleRequestId(req.id)
+                    
+                    // AUTO CLAIM if Approved
+                    if (req.status === 'Approved') {
+                        const { error: updateErr } = await supabase.auth.updateUser({
+                            data: { role: 'Owner' }
+                        })
+                        if (!updateErr) {
+                            // Sync profile and update session
+                            await supabase.from('profiles').update({ role: 'Owner' }).eq('id', userId)
+                            const { data: sData } = await supabase.auth.getSession()
+                            if (sData?.session) setSession(sData.session)
+                            
+                            // Delete request after claiming
+                            await supabase.from('role_requests').delete().eq('id', req.id)
+                            setRoleRequestStatus(null)
+                            showToast("Persetujuan Role Owner Anda telah diaktifkan!", "success")
+                        }
+                    }
+                }
+            } catch(e) {
+                console.error("Gagal fetch role request", e)
+            }
+        }
+
         if (session?.user) {
             const meta = session.user.user_metadata || {}
             setUsername(meta.username || "")
@@ -69,19 +122,20 @@ export default function ProfilePage() {
             setAddresses(meta.addresses || [])
             setAvatarUrl(meta.custom_avatar || meta.avatar_url || "")
             
-            // Fetch Orders
             async function fetchUserOrders() {
                 const supabase = createClient()
-                // Fetch orders based on name or user_id if it exists. 
-                // We fetch all and filter client-side just in case, or try matching customer_name.
                 const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false })
                 if (data) {
-                    const myOrders = data.filter(o => o.customer_name === meta.full_name || o.customer_name === meta.username || o.user_id === session.user.id)
+                    const myOrders = data.filter(o => o.buyer_name === (meta.full_name || meta.username) || o.user_id === session.user.id)
                     setUserOrders(myOrders)
                 }
                 setLoadingOrders(false)
             }
+            
             fetchUserOrders()
+            fetchRoleRequest(session.user.id)
+        } else {
+            setLoadingOrders(false)
         }
     }, [session])
 
@@ -157,6 +211,9 @@ export default function ProfilePage() {
                     data: { custom_avatar: data.publicUrl }
                 })
                 
+                // Save to profiles table so admin can see it
+                await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', session.user.id)
+                
                 if (!updateErr) {
                     const { data: sessionData } = await supabase.auth.getSession()
                     if (sessionData?.session) {
@@ -190,6 +247,9 @@ export default function ProfilePage() {
             const { data, error } = await supabase.auth.updateUser({ data: updates })
             if (error) throw error
             
+            // Sync to profiles table
+            await supabase.from('profiles').update({ name: fullName, avatar_url: avatarUrl }).eq('id', session.user.id)
+            
             // Ambil session terbaru agar state aplikasi ikut terupdate tanpa logout
             const { data: sessionData } = await supabase.auth.getSession()
             if (sessionData?.session) {
@@ -202,6 +262,25 @@ export default function ProfilePage() {
             showToast(`Gagal memperbarui profil: ${error.message}`, "error")
         } finally {
             setSaving(false)
+        }
+    }
+
+    const handleRequestOwner = async () => {
+        if (!confirm("Kirim permintaan akses Owner ke Admin?")) return
+        try {
+            const supabase = createClient()
+            const { error } = await supabase.from('role_requests').insert({
+                user_id: session.user.id,
+                user_name: fullName || username || 'Pengguna',
+                status: 'Pending'
+            })
+            if (error) throw error
+
+            setRoleRequestStatus('Pending')
+            showToast("Permintaan berhasil dikirim. Menunggu persetujuan Admin.", "success")
+        } catch (error) {
+            console.error("Error requesting owner:", error)
+            showToast(`Gagal: ${error.message}`, "error")
         }
     }
 
@@ -323,6 +402,85 @@ export default function ProfilePage() {
         }
     }
 
+    const filteredUserOrders = userOrders.filter(o => orderFilterStatus === 'Semua' || o.status === orderFilterStatus)
+
+    async function handleViewDetail(order) {
+        setSelectedOrder(order)
+        setLoadingOrderDetails(true)
+        const supabase = createClient()
+        
+        // Fetch items and product details
+        const { data: itemsData } = await supabase.from('order_items').select('*, products(name, image_url)').eq('order_id', order.id)
+        
+        if (itemsData) {
+            setOrderDetailItems(itemsData)
+        } else {
+            setOrderDetailItems([])
+        }
+        setLoadingOrderDetails(false)
+    }
+
+    async function handleSubmitReturn(e) {
+        e.preventDefault()
+        if (!returnReason.trim()) {
+            showToast("Harap isi alasan pengembalian", "warn")
+            return
+        }
+        
+        setSubmittingReturn(true)
+        const supabase = createClient()
+        
+        // 1. Update orders status
+        const { error: ordErr } = await supabase.from('orders').update({
+            status: 'Pengembalian Barang (Pending)',
+            return_reason: returnReason
+        }).eq('id', orderToReturn.id)
+
+        // 2. Insert into returns table
+        const { error: retErr } = await supabase.from('returns').insert({
+            order_id: orderToReturn.id,
+            user_id: session.user.id,
+            user_name: fullName || username || 'Pelanggan',
+            reason: returnReason,
+            status: 'Pending'
+        })
+        
+        if (ordErr || retErr) {
+            console.error("Return error:", ordErr || retErr)
+            showToast("Gagal mengajukan pengembalian barang", "error")
+        } else {
+            showToast("Pengembalian barang berhasil diajukan! Menunggu persetujuan Admin.", "success")
+            setReturnModalOpen(false)
+            setReturnReason("")
+            
+            // Update local state
+            setUserOrders(prev => prev.map(o => o.id === orderToReturn.id ? { ...o, status: 'Pengembalian Barang (Pending)', return_reason: returnReason } : o))
+            setOrderToReturn(null)
+        }
+        setSubmittingReturn(false)
+    }
+
+    function formatRupiah(n) {
+        if (!n) return "Rp 0"
+        return "Rp " + Number(n).toLocaleString('id-ID')
+    }
+
+    function getStatusBadge(status) {
+        switch(status) {
+            case 'Selesai':
+            case 'Dikirim':
+                return <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '999px', background: '#ecfdf5', color: '#10b981', border: '1px solid #a7f3d0', fontSize: '0.7rem', fontWeight: 700 }}>{status}</span>
+            case 'Dibatalkan':
+            case 'Pengembalian Barang':
+                return <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '999px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', fontSize: '0.7rem', fontWeight: 700 }}>{status}</span>
+            case 'Sedang Dikemas':
+                return <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '999px', background: '#eff6ff', color: '#3b82f6', border: '1px solid #bfdbfe', fontSize: '0.7rem', fontWeight: 700 }}>{status}</span>
+            default:
+                // Belum Bayar
+                return <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '999px', background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', fontSize: '0.7rem', fontWeight: 700 }}>{status || 'Belum Bayar'}</span>
+        }
+    }
+
     if (!session) {
         return (
             <main className="contentArea" style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh'}}>
@@ -413,6 +571,35 @@ export default function ProfilePage() {
                             <div>
                                 <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--dark)', margin: '0 0 4px 0' }}>Halo, {fullName || username || 'User'}!</h1>
                                 <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.95rem' }}>Selamat datang di Dashboard Pengguna Anda.</p>
+                                {session?.user?.user_metadata?.role !== 'Owner' && (
+                                    <button 
+                                        onClick={roleRequestStatus === 'Pending' ? null : handleRequestOwner}
+                                        disabled={roleRequestStatus === 'Pending'}
+                                        style={{ 
+                                            marginTop: '12px', 
+                                            padding: '8px 16px', 
+                                            background: roleRequestStatus === 'Pending' ? '#f1f5f9' : '#fef3c7', 
+                                            color: roleRequestStatus === 'Pending' ? '#94a3b8' : '#d97706', 
+                                            border: roleRequestStatus === 'Pending' ? '1px solid #e2e8f0' : '1px solid #fde68a', 
+                                            borderRadius: '8px', 
+                                            fontWeight: 700, 
+                                            fontSize: '0.85rem', 
+                                            cursor: roleRequestStatus === 'Pending' ? 'not-allowed' : 'pointer', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '8px', 
+                                            transition: 'all 0.2s' 
+                                        }}
+                                    >
+                                        {roleRequestStatus === 'Pending' ? (
+                                            <><i className="fas fa-hourglass-half"></i> Menunggu Persetujuan Admin...</>
+                                        ) : roleRequestStatus === 'Rejected' ? (
+                                            <><i className="fas fa-times-circle"></i> Permintaan Ditolak (Coba Lagi)</>
+                                        ) : (
+                                            <><i className="fas fa-crown"></i> Request Role Owner</>
+                                        )}
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -638,14 +825,80 @@ export default function ProfilePage() {
                             <h1 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#333', margin: 0 }}>Riwayat Pesanan</h1>
                             <p style={{ fontSize: '0.9rem', color: '#555', marginTop: '4px' }}>Daftar pesanan Anda yang pernah dilakukan di toko ini.</p>
                         </div>
-                        <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--muted)' }}>
-                            <i className="fas fa-clipboard-list fa-3x" style={{ marginBottom: '16px', color: '#cbd5e1' }}></i>
-                            <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--dark)' }}>Belum Ada Pesanan</div>
-                            <p style={{ marginTop: '8px' }}>Sepertinya Anda belum membuat pesanan sama sekali.</p>
-                            <Link href="/">
-                                <button className="btn btnPrimary" style={{ marginTop: '20px', background: '#ee4d2d', border: 'none', color: '#fff' }}>Belanja Sekarang</button>
-                            </Link>
+
+                        {/* Order Status Tabs */}
+                        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f1f5f9' }}>
+                            {['Semua', 'Belum Bayar', 'Sedang Dikemas', 'Dikirim', 'Selesai', 'Dibatalkan', 'Pengembalian Barang'].map(stat => (
+                                <button 
+                                    key={stat}
+                                    onClick={() => setOrderFilterStatus(stat)}
+                                    style={{ 
+                                        padding: '8px 16px', borderRadius: '999px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', border: 'none', transition: 'all 0.2s',
+                                        background: orderFilterStatus === stat ? 'rgba(3,172,14,0.1)' : '#f8fafc',
+                                        color: orderFilterStatus === stat ? 'var(--primary)' : '#64748b',
+                                        boxShadow: orderFilterStatus === stat ? 'inset 0 0 0 1px var(--primary)' : 'inset 0 0 0 1px #e2e8f0'
+                                    }}
+                                >
+                                    {stat}
+                                </button>
+                            ))}
                         </div>
+
+                        {loadingOrders ? (
+                            <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                                <i className="fas fa-spinner fa-spin" style={{ fontSize: '1.5rem', marginBottom: '10px' }}></i>
+                                <div>Memuat pesanan...</div>
+                            </div>
+                        ) : filteredUserOrders.length === 0 ? (
+                            <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--muted)' }}>
+                                <i className="fas fa-clipboard-list fa-3x" style={{ marginBottom: '16px', color: '#cbd5e1' }}></i>
+                                <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--dark)' }}>Belum Ada Pesanan</div>
+                                <p style={{ marginTop: '8px' }}>Sepertinya Anda belum membuat pesanan sama sekali.</p>
+                                <Link href="/">
+                                    <button className="btn btnPrimary" style={{ marginTop: '20px', background: '#ee4d2d', border: 'none', color: '#fff', padding: '10px 24px', borderRadius: '4px' }}>Belanja Sekarang</button>
+                                </Link>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                {filteredUserOrders.map(order => (
+                                    <div key={order.id} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', background: '#fff' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px', marginBottom: '12px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <i className="fas fa-shopping-bag" style={{ color: 'var(--primary)', fontSize: '1.2rem' }}></i>
+                                                <div>
+                                                    <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>{order.created_at ? new Date(order.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}</div>
+                                                    <div style={{ fontSize: '0.9rem', color: 'var(--dark)', fontWeight: 700 }}>{order.id?.split('-')[0] || 'INV-XXX'}</div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                {getStatusBadge(order.status)}
+                                            </div>
+                                        </div>
+                                        
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                                            <div>
+                                                <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '4px' }}>Total Belanja</div>
+                                                <div style={{ fontSize: '1.1rem', color: 'var(--dark)', fontWeight: 800 }}>{formatRupiah(order.total_amount)}</div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                {(order.status === 'Selesai' || order.status === 'Dikirim') && (
+                                                    <button 
+                                                        onClick={() => {
+                                                            setOrderToReturn(order)
+                                                            setReturnModalOpen(true)
+                                                        }} 
+                                                        style={{ padding: '8px 16px', background: '#fff', color: '#ee4d2d', border: '1px solid #ee4d2d', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
+                                                    >
+                                                        Ajukan Pengembalian
+                                                    </button>
+                                                )}
+                                                <button onClick={() => handleViewDetail(order)} style={{ padding: '8px 16px', background: '#fff', color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>Lihat Detail</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </>
                 )}
 
@@ -803,6 +1056,126 @@ export default function ProfilePage() {
                             <button className="btn btnOutline" onClick={() => setCropModalOpen(false)}>Batal</button>
                             <button className="btn btnPrimary" onClick={handleCropSave} style={{background: '#ee4d2d', color: '#fff', border: 'none'}}>Potong & Simpan</button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ORDER DETAIL MODAL */}
+            {selectedOrder && (
+                <div style={{position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)'}}>
+                    <div style={{background: '#fff', borderRadius: '12px', width: '95%', maxWidth: '600px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'}}>
+                        <div style={{padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc'}}>
+                            <div>
+                                <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--dark)', margin: 0 }}>Detail Pesanan</h2>
+                                <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '4px' }}>{selectedOrder.id?.split('-')[0] || 'INV-XXX'}</div>
+                            </div>
+                            <button onClick={() => setSelectedOrder(null)} style={{ background: '#e2e8f0', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#64748b', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                <div>
+                                    <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '4px', fontWeight: 600 }}>Status Pesanan</div>
+                                    <div>{getStatusBadge(selectedOrder.status)}</div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '4px', fontWeight: 600 }}>Tanggal Pembelian</div>
+                                    <div style={{ fontSize: '0.9rem', color: 'var(--dark)', fontWeight: 600 }}>
+                                        {selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--dark)', marginBottom: '16px', borderBottom: '2px solid #f1f5f9', paddingBottom: '8px' }}>Rincian Produk</h3>
+                            
+                            {loadingOrderDetails ? (
+                                <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
+                                    <i className="fas fa-spinner fa-spin" style={{ fontSize: '1.5rem', marginBottom: '10px' }}></i>
+                                    <div>Memuat rincian produk...</div>
+                                </div>
+                            ) : orderDetailItems.length === 0 ? (
+                                <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                                    <i className="fas fa-box-open" style={{ fontSize: '2rem', marginBottom: '10px', color: '#cbd5e1' }}></i>
+                                    <div style={{ fontSize: '0.9rem' }}>Rincian barang tidak tersedia untuk pesanan lama ini.</div>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+                                    {orderDetailItems.map(item => (
+                                        <div key={item.id} style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                                            <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0', flexShrink: 0, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                {item.products?.image_url ? (
+                                                    <img src={item.products.image_url} alt="Product" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <i className="fas fa-image" style={{ color: '#cbd5e1', fontSize: '1.5rem' }}></i>
+                                                )}
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontWeight: 600, color: 'var(--dark)', fontSize: '0.95rem', marginBottom: '4px' }}>{item.products?.name || 'Produk Tidak Diketahui'}</div>
+                                                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{item.quantity} x {formatRupiah(item.price_at_purchase)}</div>
+                                            </div>
+                                            <div style={{ fontWeight: 700, color: 'var(--dark)', fontSize: '0.95rem' }}>
+                                                {formatRupiah(item.quantity * item.price_at_purchase)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--dark)', marginBottom: '16px', borderBottom: '2px solid #f1f5f9', paddingBottom: '8px', marginTop: '24px' }}>Rincian Pengiriman & Pembayaran</h3>
+                            <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <div style={{ color: '#64748b', fontSize: '0.9rem' }}>Kurir</div>
+                                    <div style={{ fontWeight: 600, color: 'var(--dark)', fontSize: '0.9rem' }}>{selectedOrder.courier || '-'}</div>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <div style={{ color: '#64748b', fontSize: '0.9rem' }}>Metode Pembayaran</div>
+                                    <div style={{ fontWeight: 600, color: 'var(--dark)', fontSize: '0.9rem' }}>{selectedOrder.payment_method || '-'}</div>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #cbd5e1', paddingTop: '12px', marginTop: '4px' }}>
+                                    <div style={{ color: 'var(--dark)', fontSize: '0.95rem', fontWeight: 700 }}>Total Belanja</div>
+                                    <div style={{ fontWeight: 800, color: '#ee4d2d', fontSize: '1.1rem' }}>{formatRupiah(selectedOrder.total_amount)}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style={{padding: '16px 24px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', background: '#f8fafc'}}>
+                            <button onClick={() => setSelectedOrder(null)} style={{ padding: '10px 24px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer' }}>Tutup</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* RETURN REASON MODAL */}
+            {returnModalOpen && orderToReturn && (
+                <div style={{position: 'fixed', inset: 0, zIndex: 1300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)'}}>
+                    <div style={{background: '#fff', borderRadius: '12px', width: '90%', maxWidth: '400px', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'}}>
+                        <div style={{padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc'}}>
+                            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--dark)', margin: 0 }}>Ajukan Pengembalian</h2>
+                            <button onClick={() => { setReturnModalOpen(false); setReturnReason(""); setOrderToReturn(null) }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#64748b' }}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleSubmitReturn} style={{ padding: '24px' }}>
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: 'var(--dark)', marginBottom: '8px' }}>Alasan Pengembalian</label>
+                                <textarea 
+                                    value={returnReason}
+                                    onChange={(e) => setReturnReason(e.target.value)}
+                                    placeholder="Jelaskan alasan Anda mengembalikan barang ini (misal: Barang rusak, ukuran tidak sesuai...)"
+                                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', minHeight: '100px', fontSize: '0.95rem' }}
+                                    required
+                                />
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+                                <button type="button" onClick={() => { setReturnModalOpen(false); setReturnReason(""); setOrderToReturn(null) }} style={{ padding: '10px 20px', background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}>Batal</button>
+                                <button type="submit" disabled={submittingReturn || !returnReason.trim()} style={{ padding: '10px 20px', background: '#ee4d2d', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 600, cursor: submittingReturn || !returnReason.trim() ? 'not-allowed' : 'pointer', opacity: submittingReturn || !returnReason.trim() ? 0.7 : 1 }}>
+                                    {submittingReturn ? "Memproses..." : "Kirim Pengajuan"}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

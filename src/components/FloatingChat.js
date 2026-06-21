@@ -8,7 +8,7 @@ export default function FloatingChat() {
   const [isHovered, setIsHovered] = useState(false)
   const [message, setMessage] = useState("")
   
-  const [hasUnread, setHasUnread] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const [chatHistory, setChatHistory] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   
@@ -21,7 +21,7 @@ export default function FloatingChat() {
   useEffect(() => {
     if (!session?.user?.id) {
       setChatHistory([])
-      setHasUnread(false)
+      setUnreadCount(0)
       return;
     }
 
@@ -45,8 +45,8 @@ export default function FloatingChat() {
         }))
         setChatHistory(formatted)
         
-        const unread = data.some(msg => msg.sender === 'admin' && !msg.is_read)
-        setHasUnread(unread)
+        const count = data.filter(msg => (msg.sender === 'admin' || msg.sender === 'bot') && !msg.is_read).length
+        setUnreadCount(count)
       }
       setIsLoading(false)
     }
@@ -63,7 +63,7 @@ export default function FloatingChat() {
         filter: `user_id=eq.${session.user.id}`
       }, (payload) => {
         const newMsg = payload.new
-        const formattedMsg = {
+        const formatted = {
           id: newMsg.id,
           sender: newMsg.sender,
           text: newMsg.text,
@@ -73,12 +73,13 @@ export default function FloatingChat() {
         
         setChatHistory(prev => {
           if (prev.find(m => m.id === newMsg.id)) return prev;
-          return [...prev, formattedMsg]
+          return [...prev, formatted]
         })
         
-        if (newMsg.sender === 'admin') {
-          setHasUnread(true)
+        if (newMsg.sender === 'admin' || newMsg.sender === 'bot') {
+          setUnreadCount(prev => prev + 1)
         }
+        scrollToBottom()
       })
       .subscribe()
 
@@ -93,21 +94,20 @@ export default function FloatingChat() {
 
   // Handle open chat & mark as read
   useEffect(() => {
-    if (isOpen && session?.user?.id) {
-      scrollToBottom()
-      if (hasUnread) {
-        setHasUnread(false)
+    if (isOpen && unreadCount > 0 && session?.user?.id) {
+      setUnreadCount(0)
+      if (chatHistory.some(m => (m.sender === 'admin' || m.sender === 'bot') && !m.is_read)) {
         const supabase = createClient()
         supabase
           .from('chat_messages')
           .update({ is_read: true })
           .eq('user_id', session.user.id)
-          .eq('sender', 'admin')
+          .in('sender', ['admin', 'bot'])
           .eq('is_read', false)
           .then()
       }
     }
-  }, [isOpen, hasUnread, session, chatHistory])
+  }, [isOpen, unreadCount, session, chatHistory])
 
   const handleOpenChat = () => {
     if (!session) {
@@ -153,14 +153,16 @@ export default function FloatingChat() {
     })
     scrollToBottom()
 
-    // Simulate auto reply from admin
-    setTimeout(async () => {
-      await supabase.from('chat_messages').insert({
-        user_id: session.user.id,
-        sender: 'admin',
-        text: 'Terima kasih atas pesan Anda! Kami akan segera membalasnya.'
-      })
-    }, 1500)
+    // Simulate auto reply from admin ONLY for the first message
+    if (chatHistory.length === 0) {
+        setTimeout(async () => {
+          await supabase.from('chat_messages').insert({
+            user_id: session.user.id,
+            sender: 'bot',
+            text: 'Terima kasih atas pesan Anda! Kami akan segera membalasnya.'
+          })
+        }, 1500)
+    }
   }
 
   // Floating Bubble View
@@ -194,18 +196,24 @@ export default function FloatingChat() {
         title="Chat dengan CS"
       >
         <i className="fas fa-comment-dots"></i>
-        {/* Red dot indicator */}
-        {hasUnread && (
+        {/* Red dot indicator with number */}
+        {unreadCount > 0 && (
           <span style={{
             position: 'absolute',
-            top: '12px',
-            right: '12px',
-            width: '12px',
-            height: '12px',
+            top: '0px',
+            right: '0px',
+            width: '20px',
+            height: '20px',
             background: '#ef4444',
             borderRadius: '50%',
-            border: '2px solid var(--primary)'
-          }}></span>
+            border: '2px solid var(--primary)',
+            color: 'white',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>{unreadCount}</span>
         )}
       </button>
     )
@@ -232,8 +240,8 @@ export default function FloatingChat() {
               <div style={{position: 'absolute', bottom: '0', right: '0', width: '12px', height: '12px', background: '#22c55e', borderRadius: '50%', border: '2px solid var(--primary)'}}></div>
             </div>
             <div>
-              <div style={{fontWeight: 700, fontSize: '1.1rem', lineHeight: 1.2}}>CS SembakoBerkah</div>
-              <div style={{fontSize: '0.8rem', opacity: 0.9}}>Biasanya membalas dalam 5 menit</div>
+              <div style={{fontWeight: 700, fontSize: '1.1rem', lineHeight: 1.2}}>CS Sembako Berkah</div>
+              <div style={{fontSize: '0.8rem', opacity: 0.9}}>Sedang Online (2)</div>
             </div>
           </div>
           <div style={{display: 'flex', gap: '16px', fontSize: '1.2rem', opacity: 0.8}}>
@@ -264,26 +272,38 @@ export default function FloatingChat() {
             chatHistory.map((chat) => (
               <div key={chat.id} style={{
                 display: 'flex', 
-                flexDirection: 'column',
-                alignItems: chat.sender === 'user' ? 'flex-end' : 'flex-start'
+                alignItems: 'flex-start',
+                justifyContent: chat.sender === 'user' ? 'flex-end' : 'flex-start'
               }}>
-                <div style={{
-                  maxWidth: '85%',
-                  padding: '12px 16px',
-                  borderRadius: '16px',
-                  borderBottomRightRadius: chat.sender === 'user' ? '4px' : '16px',
-                  borderBottomLeftRadius: chat.sender === 'admin' ? '4px' : '16px',
-                  background: chat.sender === 'user' ? 'var(--primary)' : 'white',
-                  color: chat.sender === 'user' ? 'white' : 'var(--dark)',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                  fontSize: '0.95rem',
-                  lineHeight: 1.5,
-                  wordBreak: 'break-word'
-                }}>
-                  {chat.text}
-                </div>
-                <div style={{fontSize: '0.75rem', color: 'var(--muted)', marginTop: '4px', padding: '0 4px'}}>
-                  {chat.time} {chat.sender === 'user' && <i className="fas fa-check-double" style={{marginLeft: '4px', color: 'var(--primary)', opacity: 0.8}}></i>}
+                {chat.sender !== 'user' && (
+                  <div style={{
+                    width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0, marginRight: '10px',
+                    background: chat.sender === 'bot' ? '#10b981' : 'var(--primary)',
+                    color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginTop: '4px'
+                  }}>
+                    <i className={chat.sender === 'bot' ? "fas fa-robot" : "fas fa-headset"} style={{ fontSize: '0.8rem' }}></i>
+                  </div>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: chat.sender === 'user' ? 'flex-end' : 'flex-start' }}>
+                  <div style={{
+                    maxWidth: '100%',
+                    padding: '12px 16px',
+                    borderRadius: '16px',
+                    borderBottomRightRadius: chat.sender === 'user' ? '4px' : '16px',
+                    borderBottomLeftRadius: chat.sender !== 'user' ? '4px' : '16px',
+                    background: chat.sender === 'user' ? 'var(--primary)' : 'white',
+                    color: chat.sender === 'user' ? 'white' : 'var(--dark)',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+                    fontSize: '0.95rem',
+                    lineHeight: 1.5,
+                    wordBreak: 'break-word'
+                  }}>
+                    {chat.text}
+                  </div>
+                  <div style={{fontSize: '0.75rem', color: 'var(--muted)', marginTop: '4px', padding: '0 4px'}}>
+                    {chat.sender === 'bot' ? 'Sistem Otomatis' : (chat.sender === 'admin' ? 'Admin' : '')} {chat.sender !== 'user' ? '• ' : ''}{chat.time} {chat.sender === 'user' && <i className="fas fa-check-double" style={{marginLeft: '4px', color: 'var(--primary)', opacity: 0.8}}></i>}
+                  </div>
                 </div>
               </div>
             ))

@@ -137,6 +137,12 @@ export default function OrdersPage() {
                                     </td>
                                     <td style={{ padding: '16px 20px' }}>
                                         {getStatusBadge(order.status)}
+                                        {order.status === 'Pengembalian Barang' && order.return_reason && (
+                                            <div style={{ marginTop: '8px', fontSize: '0.75rem', color: '#ef4444', background: '#fef2f2', padding: '8px', borderRadius: '4px', border: '1px solid #fca5a5', maxWidth: '200px' }}>
+                                                <div style={{ fontWeight: 700, marginBottom: '2px' }}>Alasan Retur:</div>
+                                                {order.return_reason}
+                                            </div>
+                                        )}
                                     </td>
                                     <td style={{ padding: '16px 20px', textAlign: 'right' }}>
                                         <select 

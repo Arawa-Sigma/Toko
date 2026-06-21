@@ -41,11 +41,15 @@ export default function DashboardLayout({ children }) {
         { name: 'Notifikasi', icon: 'fa-bell', path: '/dashboard/notifications' },
     ]
 
+    const menuManajemen = [
+        { name: 'Pengguna', icon: 'fa-users', path: '/dashboard/users' },
+    ]
+
     const menuPemasaran = [
         { name: 'Diskon', icon: 'fa-tags', path: '/dashboard/discounts' }
     ]
 
-    const menuItems = [...menuOverview, ...menuPemasaran, ...menuKomunikasi]
+    const menuItems = [...menuOverview, ...menuManajemen, ...menuPemasaran, ...menuKomunikasi]
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', background: '#f4f7f6', color: '#333' }}>
@@ -77,6 +81,32 @@ export default function DashboardLayout({ children }) {
                         Overview
                     </div>
                     {menuOverview.map((item) => {
+                        const isActive = pathname === item.path
+                        return (
+                            <Link key={item.name} href={item.path} style={{ textDecoration: 'none' }}>
+                                <div style={{ 
+                                    padding: '8px 12px', 
+                                    borderRadius: '6px', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '10px',
+                                    color: isActive ? 'var(--primary)' : '#475569',
+                                    background: isActive ? '#f0fdf4' : 'transparent',
+                                    fontWeight: isActive ? 700 : 500,
+                                    transition: 'all 0.2s ease',
+                                    cursor: 'pointer'
+                                }}>
+                                    <i className={`fas ${item.icon}`} style={{ width: '16px', textAlign: 'center', fontSize: '0.9rem' }}></i>
+                                    <span style={{ fontSize: '0.8rem' }}>{item.name}</span>
+                                </div>
+                            </Link>
+                        )
+                    })}
+
+                    <div style={{ fontSize: '0.6rem', fontWeight: 700, color: '#94a3b8', padding: '0 8px', marginTop: '16px', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                        Manajemen
+                    </div>
+                    {menuManajemen.map((item) => {
                         const isActive = pathname === item.path
                         return (
                             <Link key={item.name} href={item.path} style={{ textDecoration: 'none' }}>

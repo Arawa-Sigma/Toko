@@ -75,6 +75,11 @@ export default function CheckoutPage() {
     if (total < 0) total = 0
 
     const handleCheckout = async () => {
+        if (!session?.user?.id) {
+            showToast("Silakan login terlebih dahulu untuk membuat pesanan.", "error")
+            return
+        }
+
         if (!buyerName) {
             showToast("Nama penerima belum diisi!", "error")
             return
@@ -99,12 +104,6 @@ export default function CheckoutPage() {
             buyer_name: buyerName,
             payment_method: 'Transfer / COD',
             courier: courier,
-            delivery_address: courier === "Ambil Sendiri" ? "Ambil di Toko" : "Menunggu Alamat",
-            subtotal: subtotal,
-            tax: tax,
-            shipping_fee: shippingFee,
-            admin_fee: adminFee,
-            discount: discount,
             total_amount: total,
             status: 'Belum Bayar',
             user_id: session?.user?.id || null
@@ -117,6 +116,17 @@ export default function CheckoutPage() {
             showToast("Gagal membuat pesanan, silakan coba lagi.", "error")
             setIsProcessing(false)
             return
+        }
+
+        const insertedOrder = data?.[0]
+        if (insertedOrder) {
+            const orderItemsPayload = enrichedCheckout.map(item => ({
+                order_id: insertedOrder.id,
+                product_id: item.productId,
+                quantity: item.qty,
+                price_at_purchase: item.price
+            }))
+            await supabase.from('order_items').insert(orderItemsPayload)
         }
 
         // Kurangi stok
