@@ -187,7 +187,7 @@ export default function Storefront() {
                 {/* Banner & Why Choose Us */}
                 <div className="grid2" style={{gap: "24px", marginBottom: "24px"}}>
                     {/* LEFT: Smaller Promo Banner */}
-                    <div style={{
+                    <div className="promoBannerHome" style={{
                       background: "url('/promo_mascot.png') center right / cover no-repeat", 
                       borderRadius: "16px", 
                       color: "white", 
@@ -195,12 +195,13 @@ export default function Storefront() {
                       padding: "48px 56px",
                       display: "flex",
                       flexDirection: "column",
-                      justifyContent: "center"
+                      justifyContent: "center",
+                      minHeight: "220px"
                     }}>
-                        <h2 style={{fontSize: "1.8rem", fontWeight: 900, lineHeight: 1.2, marginBottom: "8px"}}>Makin Untung<br/>Belanja Disini!</h2>
-                        <p style={{fontSize: "0.85rem", opacity: 0.9, marginBottom: "24px", maxWidth: "280px"}}>Dapatkan potongan harga khusus untuk produk pilihan setiap harinya.</p>
-                        <div>
-                            <button className="btn" style={{background: "white", color: "#059669", padding: "8px 20px", fontSize: "0.8rem", border: "none", borderRadius: "999px"}} onClick={() => document.getElementById('discountGrid')?.scrollIntoView({behavior:'smooth'})}>
+                        <h2 style={{fontSize: "1.8rem", fontWeight: 900, lineHeight: 1.2, marginBottom: "8px", maxWidth: "45%", position: "relative", zIndex: 2}}>Makin Untung<br/>Belanja Disini!</h2>
+                        <p style={{fontSize: "0.85rem", opacity: 0.9, marginBottom: "24px", maxWidth: "45%", position: "relative", zIndex: 2, textShadow: "0 1px 4px rgba(0,0,0,0.2)"}}>Dapatkan potongan harga khusus untuk produk pilihan setiap harinya.</p>
+                        <div style={{position: "relative", zIndex: 2}}>
+                            <button className="btn" style={{background: "white", color: "#059669", padding: "8px 20px", fontSize: "0.8rem", border: "none", borderRadius: "999px", boxShadow: "0 4px 10px rgba(0,0,0,0.1)"}} onClick={() => document.getElementById('discountGrid')?.scrollIntoView({behavior:'smooth'})}>
                                 Cek Promo Sekarang
                             </button>
                         </div>
@@ -245,7 +246,7 @@ export default function Storefront() {
                     <h3 className="h1" style={{fontSize: "1.2rem", marginBottom: "4px"}}>Kategori Pilihan</h3>
                 </div>
                 
-                <div style={{display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "10px"}}>
+                <div className="categoryBar" style={{marginTop: "0"}}>
                   {categories.map(cat => {
                     const isActive = landingCategory === cat.name;
                     return (

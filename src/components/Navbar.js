@@ -161,7 +161,7 @@ export default function Navbar() {
           </div>
           
           {session ? (
-            <div style={{position: 'relative', display: 'flex', alignItems: 'center', marginLeft: '10px'}}>
+            <div className="nav-profile-badge" style={{position: 'relative', display: 'flex', alignItems: 'center', marginLeft: '10px'}}>
               <div 
                 onClick={() => { setIsDropdownOpen(!isDropdownOpen); setIsNotifOpen(false); }}
                 style={{display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px', background: '#f1f5f9', borderRadius: '999px', cursor: 'pointer', transition: 'background 0.2s'}}
@@ -176,7 +176,7 @@ export default function Navbar() {
                 ) : (
                   <img src="/people.png" alt="Avatar Default" style={{width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover'}} />
                 )}
-                <span style={{fontSize: '0.85rem', fontWeight: 600, color: 'var(--dark)'}}>
+                <span className="nav-profile-name" style={{fontSize: '0.85rem', fontWeight: 600, color: 'var(--dark)', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
                   {session.user?.user_metadata?.username || session.user?.user_metadata?.full_name || session.user?.email?.split('@')[0] || 'User'}
                 </span>
                 <i className={`fas fa-chevron-down`} style={{fontSize: '0.7rem', color: 'var(--muted)', marginLeft: '4px', transform: isDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s'}}></i>
@@ -304,6 +304,19 @@ export default function Navbar() {
           .iconBtn { width: 32px; height: 32px; }
           .tabBtn { padding: 6px 10px; font-size: 0.8rem; }
           .search { padding: 8px 14px 8px 34px !important; height: 36px !important; }
+        }
+        
+        @media (max-width: 480px) {
+          .nav { padding: 8px 10px; gap: 6px; }
+          .brand { padding: 2px; }
+          .logo-img { height: 28px !important; }
+          .navRight { gap: 2px !important; }
+          .iconBtn { width: 30px; height: 30px; font-size: 0.85rem; }
+          .search { height: 34px !important; font-size: 0.85rem !important; border-radius: 10px !important; }
+          .nav-search-container { margin-top: 2px; }
+          .tabBtn { padding: 5px 8px; font-size: 0.75rem; }
+          .nav-profile-badge { margin-left: 4px !important; }
+          .nav-profile-name { max-width: 60px !important; font-size: 0.78rem !important; }
         }
       `}} />
     </>

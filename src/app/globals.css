@@ -1693,3 +1693,226 @@ a {
   border-radius: 999px;
   background: white;
 }
+
+/* ==========================================
+   MOBILE RESPONSIVE (≤ 480px) - Android/Phone
+   ========================================== */
+@media (max-width: 480px) {
+  /* -- Carousel -- */
+  .carousel-container {
+    height: 200px;
+    border-radius: 14px;
+  }
+  .carousel-content {
+    padding: 20px 18px;
+    max-width: 65%;
+  }
+  .carousel-content h2 {
+    font-size: 1.2rem;
+    margin-bottom: 6px;
+  }
+  .carousel-content p {
+    font-size: 0.72rem;
+    margin-bottom: 10px;
+    line-height: 1.4;
+  }
+  .carousel-content .btn,
+  .carousel-content button {
+    padding: 6px 14px !important;
+    font-size: 0.7rem !important;
+    border-radius: 999px !important;
+  }
+  .carousel-arrow {
+    width: 28px;
+    height: 28px;
+    font-size: 0.7rem;
+  }
+  .carousel-arrow.left { left: 8px; }
+  .carousel-arrow.right { right: 8px; }
+  .carousel-dots {
+    bottom: 10px;
+    left: 18px;
+    gap: 5px;
+  }
+  .carousel-dot {
+    width: 6px;
+    height: 6px;
+  }
+  .carousel-dot.active {
+    width: 18px;
+  }
+  .carousel-mascot img {
+    max-height: 80%;
+  }
+  .carousel-slide {
+    padding-right: 10px;
+  }
+
+  /* -- Homepage Content Area -- */
+  .contentArea {
+    padding: 0 10px 24px;
+    margin: 10px auto;
+  }
+
+  /* -- Category Grid on homepage (inline 6-col) -- */
+  .card.sectionPad {
+    padding: 14px !important;
+    border-radius: 14px;
+  }
+
+  /* -- grid2 (promo + why choose us) -- */
+  .grid2 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* -- Products Grid -- */
+  .productsGrid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px;
+  }
+
+  /* -- Product Card tweaks -- */
+  .prod {
+    padding: 8px;
+    border-radius: 12px;
+    gap: 6px;
+  }
+  .thumb {
+    height: 90px;
+    border-radius: 10px;
+  }
+  .thumb img {
+    max-height: 78px;
+  }
+  .prodName {
+    font-size: 0.78rem;
+  }
+  .price {
+    font-size: 0.85rem;
+  }
+  .strike {
+    font-size: 0.68rem;
+  }
+  .meta {
+    font-size: 0.7rem;
+  }
+  .star {
+    font-size: 0.8rem;
+  }
+  .tag {
+    font-size: 0.62rem;
+    padding: 3px 6px;
+    border-radius: 6px;
+    top: 6px;
+    left: 6px;
+  }
+  .wish {
+    width: 26px;
+    height: 26px;
+    top: 6px;
+    right: 6px;
+    font-size: 0.7rem;
+  }
+  .prodFooter .btn {
+    padding: 7px 8px;
+    font-size: 0.72rem;
+    border-radius: 10px;
+  }
+
+  /* -- Category Cards -- */
+  .catCard {
+    padding: 6px 10px;
+    font-size: 0.68rem;
+    border-radius: 8px;
+    gap: 5px;
+  }
+  .catCard .catIcon {
+    width: 22px;
+    height: 22px;
+    font-size: 0.7rem;
+  }
+
+  /* -- Section Headers -- */
+  .h1 {
+    font-size: 1rem;
+  }
+  .p {
+    font-size: 0.78rem;
+  }
+  .titleRow {
+    gap: 8px;
+  }
+
+  /* -- Promo Banner -- */
+  .promoBanner {
+    padding: 12px 14px;
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+  .promoBannerHome {
+    padding: 20px 16px !important;
+    min-height: 140px !important;
+    border-radius: 12px !important;
+  }
+  .promoBannerHome h2 {
+    font-size: 1.15rem !important;
+    max-width: 100% !important;
+  }
+  .promoBannerHome p {
+    font-size: 0.72rem !important;
+    margin-bottom: 12px !important;
+    max-width: 100% !important;
+  }
+  .fireText {
+    font-size: 1.15rem;
+  }
+  .promoTimer {
+    text-align: center;
+  }
+
+  /* -- Auth Box Mobile -- */
+  .auth-page-wrapper {
+    padding: 16px 10px;
+  }
+
+  /* -- Modals on Mobile -- */
+  .modal {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  /* -- Quick Buy Modal Product Summary -- */
+  .qtyStepper {
+    padding: 4px 6px;
+    gap: 6px;
+  }
+}
+
+/* Even smaller screens (≤360px) */
+@media (max-width: 360px) {
+  .carousel-container {
+    height: 170px;
+  }
+  .carousel-content {
+    padding: 14px 12px;
+    max-width: 60%;
+  }
+  .carousel-content h2 {
+    font-size: 1rem;
+  }
+  .carousel-content p {
+    font-size: 0.65rem;
+  }
+  .productsGrid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6px;
+  }
+  .thumb {
+    height: 75px;
+  }
+  .thumb img {
+    max-height: 65px;
+  }
+}

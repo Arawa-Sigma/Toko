@@ -9,7 +9,7 @@ export default function Footer() {
   if (pathname === '/auth') return null
 
   return (
-    <footer style={{ background: '#065f46', borderTop: 'none', padding: '60px 20px 20px 20px', marginTop: '60px' }}>
+    <footer className="site-footer" style={{ background: '#065f46', borderTop: 'none', padding: '60px 20px 20px 20px', marginTop: '60px' }}>
       <div style={{ maxWidth: '1240px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '40px', justifyContent: 'space-between' }}>
         
         {/* Kolom 1: Brand & Info */}
@@ -75,6 +75,13 @@ export default function Footer() {
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '60px', paddingTop: '24px', textAlign: 'center', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', fontWeight: 500 }}>
         &copy; {new Date().getFullYear()} SembakoBerkah. All rights reserved.
       </div>
+      <style dangerouslySetInnerHTML={{__html: `
+        @media (max-width: 480px) {
+          .site-footer { padding: 30px 14px 14px !important; margin-top: 30px !important; }
+          .site-footer h4 { font-size: 0.95rem !important; margin-bottom: 14px !important; }
+          .site-footer p, .site-footer a { font-size: 0.85rem !important; }
+        }
+      `}} />
     </footer>
   )
 }

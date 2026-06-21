@@ -198,9 +198,9 @@ export default function ProductDetail() {
             {/* Sticky Navigation Bar */}
             {isSticky && (
                 <div style={{ position: 'fixed', top: '64px', left: 0, right: 0, background: '#fff', borderBottom: '1px solid var(--border)', zIndex: 40, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                    <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', height: '60px', padding: '0 20px' }}>
-                        <div style={{ fontWeight: 800, fontSize: '1rem', marginRight: '40px', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{product.name}</div>
-                        <div style={{ display: 'flex', gap: '32px', height: '100%' }}>
+                    <div className="product-tabs" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', height: '60px', padding: '0 20px' }}>
+                        <div className="product-tabs-title" style={{ fontWeight: 800, fontSize: '1rem', marginRight: '40px', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{product.name}</div>
+                        <div className="product-tabs-links" style={{ display: 'flex', gap: '32px', height: '100%' }}>
                             <div style={{ display: 'flex', alignItems: 'center', fontWeight: 700, color: activeTab === 'detail' ? 'var(--primary)' : 'var(--muted)', borderBottom: activeTab === 'detail' ? '3px solid var(--primary)' : '3px solid transparent', cursor: 'pointer', height: '100%' }} onClick={() => { setActiveTab('detail'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Detail Produk</div>
                             <div style={{ display: 'flex', alignItems: 'center', fontWeight: 700, color: activeTab === 'ulasan' ? 'var(--primary)' : 'var(--muted)', borderBottom: activeTab === 'ulasan' ? '3px solid var(--primary)' : '3px solid transparent', cursor: 'pointer', height: '100%' }} onClick={() => { setActiveTab('ulasan'); document.getElementById('ulasan-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}>Ulasan</div>
                             <div style={{ display: 'flex', alignItems: 'center', fontWeight: 700, color: activeTab === 'rekomendasi' ? 'var(--primary)' : 'var(--muted)', borderBottom: activeTab === 'rekomendasi' ? '3px solid var(--primary)' : '3px solid transparent', cursor: 'pointer', height: '100%' }} onClick={() => { setActiveTab('rekomendasi'); document.getElementById('rekomendasi-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}>Rekomendasi</div>
@@ -381,7 +381,7 @@ export default function ProductDetail() {
             <div id="ulasan-section" style={{ marginTop: '40px', borderTop: '4px solid var(--border)', paddingTop: '40px' }}>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', marginBottom: '24px', textTransform: 'uppercase' }}>Ulasan Pembeli</h2>
 
-                <div style={{ display: 'flex', gap: '40px', alignItems: 'center', marginBottom: '32px', padding: '24px', border: '1px solid var(--border)', borderRadius: '12px' }}>
+                <div className="review-summary" style={{ display: 'flex', gap: '40px', alignItems: 'center', marginBottom: '32px', padding: '24px', border: '1px solid var(--border)', borderRadius: '12px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '200px' }}>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                             <span style={{ color: 'var(--warn)', fontSize: '2.5rem' }}>★</span>
@@ -408,7 +408,7 @@ export default function ProductDetail() {
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '40px' }}>
+                <div className="review-layout" style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '40px' }}>
                     {/* LEFT FILTER */}
                     <div>
                         <h3 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '16px' }}>FILTER ULASAN</h3>
