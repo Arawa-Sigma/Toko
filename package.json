@@ -12,11 +12,13 @@
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.1",
     "clsx": "^2.1.1",
+    "leaflet": "^1.9.4",
     "lucide-react": "^1.17.0",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-easy-crop": "^6.0.2",
+    "react-leaflet": "^5.0.0",
     "tailwind-merge": "^3.6.0",
     "zustand": "^5.0.14"
   },

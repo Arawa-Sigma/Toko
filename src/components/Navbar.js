@@ -56,18 +56,20 @@ export default function Navbar() {
     <>
       <div className="nav" id="fullNav">
         <Link href="/" className="brand" style={{cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center'}}>
-          <div className="logo-text" style={{fontSize: '1.65rem', fontWeight: 900, display: 'flex', alignItems: 'center', letterSpacing: '-0.5px'}}>
+          <div className="logo-text" style={{fontSize: '1.25rem', fontWeight: 900, display: 'flex', alignItems: 'center', letterSpacing: '-0.5px'}}>
             <span style={{color: 'var(--dark)'}}>Sembako</span><span style={{color: 'var(--primary)'}}>Berkah</span>
           </div>
           <img src="/logo.png" alt="SembakoBerkah Logo" className="logo-img" style={{height: '32px', width: 'auto', objectFit: 'contain'}} />
         </Link>
-        <div className="navMenu" id="navMenu">
+        <div className="navMenu" id="navMenu" style={{display: 'flex', gap: '4px', alignItems: 'center', paddingLeft: '32px', flex: 1}}>
           <Link href="/">
             <button className={`tabBtn ${pathname === '/' ? 'active' : ''}`}>Belanja</button>
           </Link>
+          <div style={{ width: '1px', height: '18px', background: 'var(--border)', margin: '0 8px' }}></div>
           <Link href="/keranjang">
             <button className={`tabBtn ${pathname === '/keranjang' ? 'active' : ''}`}>Keranjang</button>
           </Link>
+          <div style={{ width: '1px', height: '18px', background: 'var(--border)', margin: '0 8px' }}></div>
           <Link href="/invoice">
             <button className={`tabBtn ${pathname === '/invoice' ? 'active' : ''}`}>Invoice</button>
           </Link>
@@ -127,9 +129,9 @@ export default function Navbar() {
                 onClick={() => { setIsDropdownOpen(!isDropdownOpen); setIsNotifOpen(false); }}
                 style={{display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px', background: '#f1f5f9', borderRadius: '999px', cursor: 'pointer', transition: 'background 0.2s'}}
               >
-                {session.user?.user_metadata?.avatar_url ? (
+                {session.user?.user_metadata?.custom_avatar || session.user?.user_metadata?.avatar_url ? (
                   <img 
-                    src={session.user.user_metadata.avatar_url} 
+                    src={session.user.user_metadata.custom_avatar || session.user.user_metadata.avatar_url} 
                     alt="Avatar" 
                     onError={(e) => { e.target.onerror = null; e.target.src = "/people.png"; }}
                     style={{width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover'}} 

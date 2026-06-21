@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useStore, useUIStore } from "@/lib/store"
 import { createClient } from "@/lib/supabaseClient"
@@ -9,13 +10,25 @@ export default function Storefront() {
   const [loading, setLoading] = useState(true)
   const { cart, addToCart, removeFromCart, updateCartQty, landingCategory, setLandingCategory, landingSearch, setLandingSearch, wishlist, toggleWishlist } = useStore()
   const showToast = useUIStore((state) => state.showToast)
+  const router = useRouter()
 
 
   useEffect(() => {
     async function loadData() {
       const supabase = createClient()
       const { data, error } = await supabase.from('products').select('*').order('id', { ascending: true })
-      if (data) setProducts(data)
+      if (data) {
+        const now = new Date()
+        const updated = data.map(p => {
+          if (p.discount > 0 && p.discount_end_date) {
+            if (new Date(p.discount_end_date) - now <= 0) {
+              return { ...p, discount: 0 }
+            }
+          }
+          return p
+        })
+        setProducts(updated)
+      }
       setLoading(false)
     }
     loadData()
@@ -75,21 +88,29 @@ export default function Storefront() {
     }
   }
 
+  const makeSlug = (name, id) => {
+    if (!name) return `product-${id}`;
+    const cleanName = name.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    return `${cleanName}-${id}`
+  }
+
   const ProductCard = ({ p }) => {
     const hasDisc = Number(p.discount || 0) > 0
     const price = Number(p.price || 0)
-    const finalPrice = hasDisc ? price - (price * (p.discount / 100)) : price
+    const finalPrice = hasDisc ? Math.round(price - (price * (p.discount / 100))) : price
     const isWish = wishlist.includes(p.id)
-    const img = p.img ? p.img : "https://cdn-icons-png.flaticon.com/512/3081/3081840.png"
+    const img = p.image_url ? p.image_url : "https://cdn-icons-png.flaticon.com/512/3081/3081840.png"
     const qtyInCart = getCartQty(p.id)
     const stockTotal = Number(p.stock || 0)
-    const stockLeft = Math.max(0, stockTotal - qtyInCart)
-    const isOut = stockLeft <= 0
-    const rating = Math.max(1, Math.min(5, Number(p.rating || 5)))
-    const stars = "★".repeat(rating) + "☆".repeat(5 - rating)
+    const isOut = stockTotal <= 0
+    const ratingRaw = Number(p.rating || 0)
+    const rating = Math.max(0, Math.min(5, ratingRaw))
+    const filledStars = Math.floor(rating)
+    const emptyStars = 5 - filledStars
+    const stars = "★".repeat(filledStars) + "☆".repeat(emptyStars)
 
     return (
-      <div className="prod">
+      <div className="prod" style={{ cursor: 'pointer' }} onClick={() => router.push(`/product/${p.slug || makeSlug(p.name, p.id)}`)}>
         {hasDisc && <div className="tag">Diskon {p.discount}%</div>}
         <button 
           className={`wish ${isWish ? "active" : ""}`} 
@@ -107,20 +128,29 @@ export default function Storefront() {
           {hasDisc && <span className="strike">{rupiah(price)}</span>}
           <span className="price">{rupiah(finalPrice)}</span>
         </div>
-        <div className="meta" style={{color:'var(--warn)', fontWeight:900}}>{stars}</div>
-        <div className="meta">
-            Stok tersedia: <b style={{color: stockLeft < 10 ? 'var(--danger)' : '#111827'}}>{stockLeft}</b>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minHeight: '20px' }}>
+            {rating > 0 ? (
+                <>
+                    <div className="star">{stars}</div>
+                    <div style={{ fontSize: '.85rem', fontWeight: 900, color: '#475569' }}>{rating.toFixed(1)}</div>
+                </>
+            ) : (
+                <div style={{ fontSize: '.75rem', color: '#94a3b8', fontWeight: 600 }}>Belum ada ulasan</div>
+            )}
         </div>
-        <div className="prodFooter">
+        <div className="meta">
+            Stok tersedia: <b style={{color: stockTotal <= 10 && stockTotal > 0 ? 'var(--warn)' : stockTotal <= 0 ? 'var(--danger)' : '#111827'}}>{stockTotal}</b>
+        </div>
+        <div className="prodFooter" onClick={(e) => e.stopPropagation()}>
             {qtyInCart <= 0 ? (
-                <button className="btn btnPrimary" onClick={() => addToCart(p)} disabled={stockTotal <= 0}>
+                <button className="btn btnPrimary" onClick={(e) => { e.stopPropagation(); addToCart(p); }} disabled={stockTotal <= 0}>
                     <i className="fas fa-cart-plus"></i> Tambah ke Keranjang
                 </button>
             ) : (
                 <div className="qtyStepper">
                     <button className="qtyMiniBtn" onClick={() => changeQty(p.id, -1, stockTotal)}>-</button>
                     <div className="qtyStepperVal">{qtyInCart}</div>
-                    <button className="qtyMiniBtn" onClick={() => changeQty(p.id, 1, stockTotal)} disabled={stockLeft <= 0}>+</button>
+                    <button className="qtyMiniBtn" onClick={() => changeQty(p.id, 1, stockTotal)} disabled={qtyInCart >= stockTotal}>+</button>
                 </div>
             )}
         </div>
@@ -132,101 +162,132 @@ export default function Storefront() {
     <>
       <main className="contentArea" id="mainContent">
         <section id="pageEtalase">
+            {/* The BIG Top Banner */}
             <div className="hero" style={{
-              background: "linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url('https://picsum.photos/id/1018/2000/1200')", 
+              background: "linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=2000')", 
               backgroundSize: "cover", 
               backgroundPosition: "center", 
-              minHeight: "380px", 
+              minHeight: "260px", 
               display: "flex", 
               alignItems: "center", 
               borderRadius: "22px", 
               color: "white", 
               position: "relative"
             }}>
-                <div style={{padding: "40px 50px", maxWidth: "620px"}}>
-                    <div style={{display: "inline-block", background: "rgba(255,255,255,0.2)", padding: "4px 14px", borderRadius: "999px", fontSize: "0.85rem", marginBottom: "12px"}}>
+                <div style={{padding: "28px 35px", maxWidth: "620px"}}>
+                    <div style={{display: "inline-block", background: "rgba(255,255,255,0.4)", backdropFilter: "blur(4px)", padding: "4px 14px", borderRadius: "999px", fontSize: "0.75rem", marginBottom: "12px", fontWeight: 700}}>
                         <i className="fas fa-store"></i> Toko Kelontong Terpercaya
                     </div>
-                    <h2 style={{fontSize: "2.6rem", lineHeight: 1.1, margin: "0 0 12px 0", fontWeight: 900}}>Belanja Sembako<br/>Mudah &amp; Terjangkau</h2>
-                    <p style={{fontSize: "1.05rem", opacity: 0.95, maxWidth: "420px"}}>Ribuan pelanggan sudah percaya kepada kami. Nikmati pengalaman belanja yang cepat, aman, dan hemat.</p>
-                    <div style={{display: "flex", gap: "12px", marginTop: "24px", flexWrap: "wrap"}}>
-                        <button className="btn btnPrimary" style={{padding: "13px 26px", fontSize: "1rem"}} onClick={() => document.getElementById('landingGrid').scrollIntoView({behavior:'smooth'})}>
+                    <h2 style={{fontSize: "2.5rem", fontWeight: 900, lineHeight: 1.2, marginBottom: "16px"}}>Belanja Sembako Mudah & Terjangkau</h2>
+                    <p style={{fontSize: "0.85rem", opacity: 0.95, maxWidth: "420px", marginBottom: "24px"}}>Ribuan pelanggan sudah percaya kepada kami. Nikmati pengalaman belanja yang cepat, aman, dan hemat.</p>
+                    <div style={{display: "flex", gap: "10px", flexWrap: "wrap"}}>
+                        <button className="btn btnPrimary" style={{padding: "8px 24px", fontSize: "0.8rem"}} onClick={() => document.getElementById('landingGrid').scrollIntoView({behavior:'smooth'})}>
                             <i className="fas fa-shopping-bag"></i> Mulai Belanja
                         </button>
-                        <Link href="/keranjang">
-                            <button className="btn" style={{background: "white", color: "#111827", padding: "13px 26px", fontSize: "1rem", border: "none"}}>
-                                <i className="fas fa-receipt"></i> Lihat Keranjang
+                    </div>
+                </div>
+            </div>
+
+            {/* Tokopedia-Style Combined Card */}
+            <div className="card sectionPad" style={{marginTop:"30px", padding: "24px"}}>
+                
+                {/* Header for the section */}
+                <div className="grid2" style={{marginBottom: "16px", gap: "24px"}}>
+                    <div>
+                        <h3 className="h1" style={{fontSize: "1.2rem", marginBottom: "4px"}}>Promo Spesial</h3>
+                    </div>
+                    <div style={{display: "flex", justifyContent: "space-between", alignItems: "center"}}>
+                        <h3 className="h1" style={{fontSize: "1.2rem", marginBottom: "4px"}}>Kenapa Memilih Kami?</h3>
+                    </div>
+                </div>
+
+                {/* Banner & Why Choose Us */}
+                <div className="grid2" style={{gap: "24px", marginBottom: "24px"}}>
+                    {/* LEFT: Smaller Promo Banner */}
+                    <div style={{
+                      background: "url('/promo_mascot.png') center right / cover no-repeat", 
+                      borderRadius: "16px", 
+                      color: "white", 
+                      position: "relative",
+                      padding: "48px 56px",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center"
+                    }}>
+                        <h2 style={{fontSize: "1.8rem", fontWeight: 900, lineHeight: 1.2, marginBottom: "8px"}}>Makin Untung<br/>Belanja Disini!</h2>
+                        <p style={{fontSize: "0.85rem", opacity: 0.9, marginBottom: "24px", maxWidth: "280px"}}>Dapatkan potongan harga khusus untuk produk pilihan setiap harinya.</p>
+                        <div>
+                            <button className="btn" style={{background: "white", color: "#059669", padding: "8px 20px", fontSize: "0.8rem", border: "none", borderRadius: "999px"}} onClick={() => document.getElementById('discountGrid')?.scrollIntoView({behavior:'smooth'})}>
+                                Cek Promo Sekarang
                             </button>
-                        </Link>
+                        </div>
                     </div>
-                </div>
-            </div>
 
-            <div style={{marginTop: "30px"}}>
-                <div className="titleRow" style={{marginBottom: "16px"}}>
-                    <div>
-                        <h3 className="h1" style={{fontSize: "1.35rem"}}>Kenapa Memilih Kami?</h3>
+                    {/* RIGHT: Why Choose Us Grid 2x2 */}
+                    <div style={{display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px", alignContent: "start"}}>
+                        <div style={{border: "1px solid #e2e8f0", borderRadius: "16px", textAlign: "center", padding: "20px 12px", display: "flex", flexDirection: "column", alignItems: "center", background: "#fff", transition: "all 0.3s ease", cursor: "default"}} className="hoverUp">
+                            <div style={{width: "48px", height: "48px", background: "#d1fae5", borderRadius: "999px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px"}}>
+                                <i className="fas fa-truck" style={{fontSize: "1.2rem", color: "var(--primary)"}}></i>
+                            </div>
+                            <div style={{fontWeight: 800, fontSize: "0.9rem"}}>Pengiriman Cepat</div>
+                            <div style={{marginTop: "6px", fontSize: "0.75rem", color: "#64748b"}}>Bisa kurir / ambil sendiri.</div>
+                        </div>
+                        <div style={{border: "1px solid #e2e8f0", borderRadius: "16px", textAlign: "center", padding: "20px 12px", display: "flex", flexDirection: "column", alignItems: "center", background: "#fff", transition: "all 0.3s ease", cursor: "default"}} className="hoverUp">
+                            <div style={{width: "48px", height: "48px", background: "#fef3c7", borderRadius: "999px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px"}}>
+                                <i className="fas fa-shield-alt" style={{fontSize: "1.2rem", color: "#ca8a04"}}></i>
+                            </div>
+                            <div style={{fontWeight: 800, fontSize: "0.9rem"}}>Kualitas Terjamin</div>
+                            <div style={{marginTop: "6px", fontSize: "0.75rem", color: "#64748b"}}>Produk fresh & dicek.</div>
+                        </div>
+                        <div style={{border: "1px solid #e2e8f0", borderRadius: "16px", textAlign: "center", padding: "20px 12px", display: "flex", flexDirection: "column", alignItems: "center", background: "#fff", transition: "all 0.3s ease", cursor: "default"}} className="hoverUp">
+                            <div style={{width: "48px", height: "48px", background: "#dbeafe", borderRadius: "999px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px"}}>
+                                <i className="fas fa-tags" style={{fontSize: "1.2rem", color: "#2563eb"}}></i>
+                            </div>
+                            <div style={{fontWeight: 800, fontSize: "0.9rem"}}>Harga Kompetitif</div>
+                            <div style={{marginTop: "6px", fontSize: "0.75rem", color: "#64748b"}}>Lebih murah dari swalayan.</div>
+                        </div>
+                        <div style={{border: "1px solid #e2e8f0", borderRadius: "16px", textAlign: "center", padding: "20px 12px", display: "flex", flexDirection: "column", alignItems: "center", background: "#fff", transition: "all 0.3s ease", cursor: "default"}} className="hoverUp">
+                            <div style={{width: "48px", height: "48px", background: "#fce7f3", borderRadius: "999px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px"}}>
+                                <i className="fas fa-headset" style={{fontSize: "1.2rem", color: "#db2777"}}></i>
+                            </div>
+                            <div style={{fontWeight: 800, fontSize: "0.9rem"}}>Layanan 24/7</div>
+                            <div style={{marginTop: "6px", fontSize: "0.75rem", color: "#64748b"}}>Customer service WA.</div>
+                        </div>
                     </div>
                 </div>
-                <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px"}}>
-                    <div className="card sectionPad" style={{textAlign: "center", padding: "22px 18px"}}>
-                        <div style={{width: "52px", height: "52px", background: "#dcfce7", borderRadius: "999px", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px"}}>
-                            <i className="fas fa-truck" style={{fontSize: "1.6rem", color: "#16a34a"}}></i>
-                        </div>
-                        <div style={{fontWeight: 900, fontSize: "1.05rem"}}>Pengiriman Cepat</div>
-                        <div className="p" style={{marginTop: "6px"}}>Kurir JNE, J&amp;T, Grab, GoSend tersedia. Bisa ambil sendiri juga.</div>
-                    </div>
-                    <div className="card sectionPad" style={{textAlign: "center", padding: "22px 18px"}}>
-                        <div style={{width: "52px", height: "52px", background: "#fef3c7", borderRadius: "999px", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px"}}>
-                            <i className="fas fa-shield-alt" style={{fontSize: "1.6rem", color: "#ca8a04"}}></i>
-                        </div>
-                        <div style={{fontWeight: 900, fontSize: "1.05rem"}}>Kualitas Terjamin</div>
-                        <div className="p" style={{marginTop: "6px"}}>Semua produk fresh dan dicek kualitasnya sebelum dikirim.</div>
-                    </div>
-                    <div className="card sectionPad" style={{textAlign: "center", padding: "22px 18px"}}>
-                        <div style={{width: "52px", height: "52px", background: "#dbeafe", borderRadius: "999px", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px"}}>
-                            <i className="fas fa-tags" style={{fontSize: "1.6rem", color: "#2563eb"}}></i>
-                        </div>
-                        <div style={{fontWeight: 900, fontSize: "1.05rem"}}>Harga Paling Kompetitif</div>
-                        <div className="p" style={{marginTop: "6px"}}>Harga lebih murah dibanding supermarket dengan kualitas yang sama.</div>
-                    </div>
-                    <div className="card sectionPad" style={{textAlign: "center", padding: "22px 18px"}}>
-                        <div style={{width: "52px", height: "52px", background: "#fce7f3", borderRadius: "999px", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px"}}>
-                            <i className="fas fa-headset" style={{fontSize: "1.6rem", color: "#db2777"}}></i>
-                        </div>
-                        <div style={{fontWeight: 900, fontSize: "1.05rem"}}>Layanan Ramah 24/7</div>
-                        <div className="p" style={{marginTop: "6px"}}>Tim customer service siap membantu kapan saja via WhatsApp.</div>
-                    </div>
-                </div>
-            </div>
 
-            <div className="card sectionPad" style={{marginTop:"16px"}}>
-                <div className="titleRow">
-                    <div>
-                        <h3 className="h1" id="etalaseTitle">Kategori Pilihan</h3>
-                        <div className="p" id="etalaseSub">Klik kategori untuk melihat produk. Semua produk bisa diedit di Dashboard Pemilik.</div>
-                    </div>
-                    <div style={{display:"flex", gap:"10px", flexWrap:"wrap"}}>
-                        <Link href="/keranjang" style={{textDecoration: 'none'}}>
-                            <span className="badge" id="cartBadge" style={{cursor:"pointer"}}>
-                                <i className="fas fa-shopping-cart"></i> Keranjang: <span id="cartCount">{cartItemCount}</span>
-                            </span>
-                        </Link>
-                        <button className="btn btnOutline" onClick={() => { setLandingCategory("Semua Barang"); setLandingSearch(""); }}><i className="fas fa-undo"></i> Reset Filter</button>
-                    </div>
+                <hr style={{border: "none", borderTop: "1px solid #e2e8f0", margin: "24px 0"}} />
+
+                <div style={{marginBottom: "16px"}}>
+                    <h3 className="h1" style={{fontSize: "1.2rem", marginBottom: "4px"}}>Kategori Pilihan</h3>
                 </div>
                 
-                <div className="categoryBar" id="categoryBar">
-                  {categories.map(cat => (
+                <div style={{display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "10px"}}>
+                  {categories.map(cat => {
+                    const isActive = landingCategory === cat.name;
+                    return (
                     <div 
                       key={cat.name} 
-                      className={`catCard ${landingCategory === cat.name ? 'active' : ''}`}
+                      className={`catCard ${isActive ? 'active' : ''}`}
                       onClick={() => setLandingCategory(cat.name)}
                     >
-                      <i className={`fas ${cat.icon}`}></i>
+                      <div className="catIcon">
+                        <i className={`fas ${cat.icon}`}></i>
+                      </div>
                       <span>{cat.name}</span>
                     </div>
-                  ))}
+                  )})}
+                </div>
+
+                <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "24px"}}>
+                    <Link href="/keranjang" style={{textDecoration: 'none'}}>
+                        <div style={{padding: "8px 16px", borderRadius: "8px", border: "1px dashed #6ee7b7", background: "#ecfdf5", color: "var(--primary)", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer"}}>
+                            <i className="fas fa-shopping-cart" style={{marginRight: "6px"}}></i> Keranjang: {cartItemCount}
+                        </div>
+                    </Link>
+                    <button onClick={() => { setLandingCategory("Semua Barang"); setLandingSearch(""); }} style={{padding: "8px 16px", borderRadius: "999px", border: "1px solid #6ee7b7", background: "#fff", color: "var(--primary)", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "6px"}} className="btn">
+                        <i className="fas fa-undo"></i> Reset Filter
+                    </button>
                 </div>
 
                 {discountProducts.length > 0 && (

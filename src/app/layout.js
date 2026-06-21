@@ -2,6 +2,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Toast from "@/components/Toast";
+import LayoutWrapper from "@/components/LayoutWrapper";
 
 export const metadata = {
   title: "Sembako Berkah - Kasir, Logistik, & Dashboard Pemilik",
@@ -20,11 +21,9 @@ export default function RootLayout({ children }) {
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
       </head>
       <body style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <Navbar />
-        <main style={{ flex: '1 0 auto' }}>
+        <LayoutWrapper>
           {children}
-        </main>
-        <Footer />
+        </LayoutWrapper>
         <Toast />
       </body>
     </html>

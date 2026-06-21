@@ -9,21 +9,21 @@ export default function Footer() {
   if (pathname === '/auth') return null
 
   return (
-    <footer style={{ background: '#0c6113', borderTop: 'none', padding: '60px 20px 20px 20px', marginTop: '60px' }}>
+    <footer style={{ background: '#065f46', borderTop: 'none', padding: '60px 20px 20px 20px', marginTop: '60px' }}>
       <div style={{ maxWidth: '1240px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '40px', justifyContent: 'space-between' }}>
         
         {/* Kolom 1: Brand & Info */}
         <div style={{ flex: '1 1 300px' }}>
           <div style={{fontSize: '1.6rem', fontWeight: 900, display: 'flex', alignItems: 'center', marginBottom: '16px'}}>
-            <span style={{color: '#ffffff'}}>Sembako</span><span style={{color: '#86efac'}}>Berkah</span>
+            <span style={{color: '#ffffff'}}>Sembako</span><span style={{color: '#6ee7b7'}}>Berkah</span>
           </div>
           <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '24px' }}>
             SembakoBerkah adalah platform toko kelontong digital yang menyediakan berbagai kebutuhan pokok harian dengan harga bersahabat dan kualitas terjamin.
           </p>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', transition: 'all 0.2s' }} onMouseOver={(e) => {e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.color = '#0c6113'}} onMouseOut={(e) => {e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#ffffff'}}><i className="fab fa-instagram"></i></a>
-            <a href="https://wa.me/6281234567890" target="_blank" rel="noopener noreferrer" style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', transition: 'all 0.2s' }} onMouseOver={(e) => {e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.color = '#0c6113'}} onMouseOut={(e) => {e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#ffffff'}}><i className="fab fa-whatsapp"></i></a>
-            <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', transition: 'all 0.2s' }} onMouseOver={(e) => {e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.color = '#0c6113'}} onMouseOut={(e) => {e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#ffffff'}}><i className="fab fa-facebook-f"></i></a>
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', transition: 'all 0.2s' }} onMouseOver={(e) => {e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.color = '#065f46'}} onMouseOut={(e) => {e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#ffffff'}}><i className="fab fa-instagram"></i></a>
+            <a href="https://wa.me/6281234567890" target="_blank" rel="noopener noreferrer" style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', transition: 'all 0.2s' }} onMouseOver={(e) => {e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.color = '#065f46'}} onMouseOut={(e) => {e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#ffffff'}}><i className="fab fa-whatsapp"></i></a>
+            <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', transition: 'all 0.2s' }} onMouseOver={(e) => {e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.color = '#065f46'}} onMouseOut={(e) => {e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#ffffff'}}><i className="fab fa-facebook-f"></i></a>
           </div>
         </div>
 

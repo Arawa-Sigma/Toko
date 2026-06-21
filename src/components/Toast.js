@@ -45,18 +45,18 @@ export default function Toast() {
       right: "24px",
       backgroundColor: bgColor,
       color: "white",
-      padding: "12px 24px",
+      padding: "8px 16px",
       borderRadius: "999px",
       display: "flex",
       alignItems: "center",
-      gap: "10px",
+      gap: "8px",
       boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
       zIndex: 9999,
       fontWeight: 600,
-      fontSize: "0.9rem",
+      fontSize: "0.8rem",
       animation: "toast-slide-down 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards"
     }}>
-      <div style={{display: 'flex', alignItems: 'center', gap: '10px', flex: 1}}>
+      <div style={{display: 'flex', alignItems: 'center', gap: '8px', flex: 1}}>
         <i className={`fas ${icon}`}></i>
         <span>{toastMessage}</span>
       </div>

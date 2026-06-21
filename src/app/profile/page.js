@@ -3,7 +3,10 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useStore, useUIStore } from "@/lib/store"
 import { createClient } from "@/lib/supabaseClient"
+import dynamic from 'next/dynamic'
 import Cropper from 'react-easy-crop'
+
+const MapPicker = dynamic(() => import('@/components/MapPicker'), { ssr: false, loading: () => <div style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }}><i className="fas fa-spinner fa-spin"></i> &nbsp; Memuat Peta...</div> })
 import { getCroppedImg } from '@/lib/cropImage'
 
 export default function ProfilePage() {
@@ -21,7 +24,15 @@ export default function ProfilePage() {
 
     const [gender, setGender] = useState("")
     const [birthDate, setBirthDate] = useState("")
-    const [address, setAddress] = useState("")
+    
+    // Address States
+    const [addresses, setAddresses] = useState([])
+    const [addressModalOpen, setAddressModalOpen] = useState(false)
+    const [mapModalOpen, setMapModalOpen] = useState(false)
+    const [tempCoordinates, setTempCoordinates] = useState(null)
+    const [newAddress, setNewAddress] = useState({
+        name: "", phone: "", region: "", street: "", detail: "", label: "Rumah", isPrimary: false, coordinates: null
+    })
     const [avatarUrl, setAvatarUrl] = useState("")
     
     // Password States
@@ -51,8 +62,8 @@ export default function ProfilePage() {
 
             setGender(meta.gender || "")
             setBirthDate(meta.birth_date || "")
-            setAddress(meta.address || "")
-            setAvatarUrl(meta.avatar_url || "")
+            setAddresses(meta.addresses || [])
+            setAvatarUrl(meta.custom_avatar || meta.avatar_url || "")
         }
     }, [session])
 
@@ -122,7 +133,20 @@ export default function ProfilePage() {
             const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
             if (data?.publicUrl) {
                 setAvatarUrl(data.publicUrl)
-                showToast("Foto berhasil diunggah! Jangan lupa klik Simpan.", "success")
+                
+                // Auto-save the avatar URL to Supabase immediately using custom_avatar to prevent OAuth overwrite
+                const { error: updateErr } = await supabase.auth.updateUser({
+                    data: { custom_avatar: data.publicUrl }
+                })
+                
+                if (!updateErr) {
+                    const { data: sessionData } = await supabase.auth.getSession()
+                    if (sessionData?.session) {
+                        setSession(sessionData.session)
+                    }
+                }
+                
+                showToast("Foto profil berhasil diperbarui!", "success")
             }
         } catch (error) {
             console.error("Error uploading avatar:", error)
@@ -134,12 +158,16 @@ export default function ProfilePage() {
 
     const handleSaveMetadata = async () => {
         if (!session?.user) return
+        if (phone && (!phone.startsWith("08") || phone.length !== 12)) {
+            showToast("Nomor telepon harus diawali dengan 08 dan 12 digit!", "error")
+            return
+        }
         try {
             setSaving(true)
             const supabase = createClient()
             const updates = {
                 username, full_name: fullName, phone,
-                gender, birth_date: birthDate, address, avatar_url: avatarUrl
+                gender, birth_date: birthDate, addresses, custom_avatar: avatarUrl
             }
             const { data, error } = await supabase.auth.updateUser({ data: updates })
             if (error) throw error
@@ -154,6 +182,100 @@ export default function ProfilePage() {
         } catch (error) {
             console.error("Error updating profile:", error)
             showToast(`Gagal memperbarui profil: ${error.message}`, "error")
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleSaveNewAddress = async () => {
+        if (!newAddress.name || !newAddress.phone || !newAddress.street) {
+            showToast("Nama lengkap, nomor telepon, dan jalan harus diisi!", "error")
+            return
+        }
+        if (!newAddress.phone.startsWith("08") || newAddress.phone.length !== 12) {
+            showToast("Nomor telepon harus diawali dengan 08 dan berjumlah 12 digit!", "error")
+            return
+        }
+        
+        try {
+            setSaving(true)
+            const supabase = createClient()
+            
+            let updatedAddresses = [...addresses]
+            if (newAddress.isPrimary) {
+                updatedAddresses = updatedAddresses.map(addr => ({ ...addr, isPrimary: false }))
+            }
+            
+            if (newAddress.id) {
+                // Editing existing address
+                const index = updatedAddresses.findIndex(addr => addr.id === newAddress.id)
+                if (index !== -1) {
+                    updatedAddresses[index] = { ...newAddress }
+                }
+            } else {
+                // Adding new address
+                const addrToAdd = { 
+                    ...newAddress, 
+                    id: Date.now().toString(),
+                    isPrimary: addresses.length === 0 ? true : newAddress.isPrimary 
+                }
+                updatedAddresses.push(addrToAdd)
+            }
+            
+            const updates = {
+                username, full_name: fullName, phone,
+                gender, birth_date: birthDate, addresses: updatedAddresses, custom_avatar: avatarUrl
+            }
+            const { error } = await supabase.auth.updateUser({ data: updates })
+            if (error) throw error
+            
+            const { data: sessionData } = await supabase.auth.getSession()
+            if (sessionData?.session) {
+                setSession(sessionData.session)
+            }
+            
+            setAddresses(updatedAddresses)
+            setAddressModalOpen(false)
+            setNewAddress({ id: null, name: "", phone: "", region: "", street: "", detail: "", label: "Rumah", isPrimary: false, coordinates: null })
+            showToast(newAddress.id ? "Alamat berhasil diperbarui!" : "Alamat berhasil ditambahkan!", "success")
+        } catch (error) {
+            console.error("Error saving address:", error)
+            showToast(`Gagal menyimpan alamat: ${error.message}`, "error")
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleDeleteAddress = async (idToDelete) => {
+        if (!confirm("Apakah Anda yakin ingin menghapus alamat ini?")) return;
+        try {
+            setSaving(true)
+            const supabase = createClient()
+            let updatedAddresses = addresses.filter(addr => addr.id !== idToDelete)
+            
+            // If the deleted address was primary, make the first remaining one primary
+            const hadPrimary = updatedAddresses.some(addr => addr.isPrimary)
+            if (!hadPrimary && updatedAddresses.length > 0) {
+                updatedAddresses[0].isPrimary = true
+            }
+
+            const updates = {
+                username, full_name: fullName, phone,
+                gender, birth_date: birthDate, addresses: updatedAddresses, custom_avatar: avatarUrl
+            }
+            const { error } = await supabase.auth.updateUser({ data: updates })
+            if (error) throw error
+            
+            const { data: sessionData } = await supabase.auth.getSession()
+            if (sessionData?.session) {
+                setSession(sessionData.session)
+            }
+            
+            setAddresses(updatedAddresses)
+            showToast("Alamat berhasil dihapus!", "success")
+        } catch (error) {
+            console.error("Error deleting address:", error)
+            showToast(`Gagal menghapus alamat: ${error.message}`, "error")
         } finally {
             setSaving(false)
         }
@@ -201,7 +323,7 @@ export default function ProfilePage() {
             {/* SIDEBAR */}
             <aside style={{ width: '250px', flexShrink: 0, paddingRight: '20px', borderRight: '1px solid #e2e8f0', minHeight: '60vh' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                    <img src={avatarUrl || "/people.png"} alt="Avatar" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }} />
+                    <img src={avatarUrl || "/people.png"} alt="Avatar" onError={(e) => { e.target.onerror = null; e.target.src = "/people.png"; }} style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }} />
                     <div>
                         <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--dark)' }}>{username || fullName || 'User'}</div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => setActiveTab('profil')}>
@@ -265,7 +387,8 @@ export default function ProfilePage() {
                                             className="input" 
                                             value={phone} 
                                             onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} 
-                                            placeholder="Contoh: 08123456789" 
+                                            placeholder="Contoh: 081234567890" 
+                                            maxLength={12}
                                             style={{ width: '100%', maxWidth: '250px' }} 
                                         />
                                     </div>
@@ -284,7 +407,9 @@ export default function ProfilePage() {
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', marginTop: '10px' }}>
                                     <div style={{ width: '120px', paddingRight: '20px' }}></div>
-                                    <button className="btn btnPrimary" style={{ padding: '10px 24px', background: '#ee4d2d', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.95rem' }} onClick={handleSaveMetadata} disabled={saving}>{saving ? "Menyimpan..." : "Simpan"}</button>
+                                    <button className="btn btnPrimary" style={{ padding: '12px 32px', fontSize: '0.9rem', borderRadius: '4px' }} onClick={handleSaveMetadata} disabled={saving}>
+                                        {saving ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</> : "Simpan"}
+                                    </button>
                                 </div>
                             </div>
                             <div style={{ width: '280px', borderLeft: '1px solid #efefef', paddingLeft: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -302,22 +427,51 @@ export default function ProfilePage() {
 
                 {activeTab === 'alamat' && (
                     <>
-                        <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '24px' }}>
+                        <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h1 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#333', margin: 0 }}>Alamat Saya</h1>
-                            <p style={{ fontSize: '0.9rem', color: '#555', marginTop: '4px' }}>Pastikan alamat terisi dengan benar untuk pengiriman pesanan.</p>
+                            <button className="btn btnPrimary" style={{ background: '#ee4d2d', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '4px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => {
+                                setNewAddress({ id: null, name: "", phone: "", region: "", street: "", detail: "", label: "Rumah", isPrimary: false, coordinates: null })
+                                setAddressModalOpen(true)
+                            }}>
+                                <i className="fas fa-plus"></i> Tambahkan Alamat
+                            </button>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '600px' }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-                                <div style={{ width: '120px', textAlign: 'right', paddingRight: '20px', fontSize: '0.9rem', color: '#555', marginTop: '10px' }}>Alamat Lengkap</div>
-                                <div style={{ flex: 1 }}>
-                                    <textarea className="input" value={address} onChange={(e) => setAddress(e.target.value)} rows="5" style={{ width: '100%', resize: 'vertical' }} placeholder="Contoh: Jl. Sudirman No. 123, RT 01/02, Kec. Melati, Kota Jakarta Selatan" />
-                                </div>
+                        
+                        {addresses.length === 0 ? (
+                            <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--muted)' }}>
+                                <i className="fas fa-map-marker-alt fa-4x" style={{ marginBottom: '16px', color: '#e2e8f0' }}></i>
+                                <div style={{ fontSize: '1.05rem', color: 'var(--muted)' }}>Anda belum memiliki alamat.</div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', marginTop: '10px' }}>
-                                <div style={{ width: '120px', paddingRight: '20px' }}></div>
-                                <button className="btn btnPrimary" style={{ padding: '10px 24px', background: '#ee4d2d', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.95rem' }} onClick={handleSaveMetadata} disabled={saving}>{saving ? "Menyimpan..." : "Simpan Alamat"}</button>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                {addresses.map((addr) => (
+                                    <div key={addr.id} style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '20px', position: 'relative' }}>
+                                        <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', gap: '12px' }}>
+                                            <span style={{ color: 'var(--primary)', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600 }} onClick={() => { setNewAddress(addr); setAddressModalOpen(true); }}>Ubah</span>
+                                            <span style={{ color: '#ef4444', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600 }} onClick={() => handleDeleteAddress(addr.id)}>Hapus</span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', paddingRight: '100px' }}>
+                                            <span style={{ fontWeight: 600, color: 'var(--dark)' }}>{addr.name}</span>
+                                            <span style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>|</span>
+                                            <span style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>{addr.phone}</span>
+                                        </div>
+                                        <div style={{ fontSize: '0.9rem', color: '#555', marginBottom: '4px' }}>{addr.street}</div>
+                                        <div style={{ fontSize: '0.9rem', color: '#555', marginBottom: '4px' }}>{addr.region}</div>
+                                        {addr.detail && <div style={{ fontSize: '0.9rem', color: '#777', fontStyle: 'italic', marginBottom: '8px' }}>({addr.detail})</div>}
+                                        {addr.coordinates && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#16a34a', marginBottom: '12px' }}>
+                                                <i className="fas fa-map-marker-alt"></i> Sudah ditandai di peta
+                                            </div>
+                                        )}
+                                        
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: !addr.coordinates && !addr.detail ? '12px' : '0' }}>
+                                            {addr.label && <span style={{ padding: '4px 8px', border: '1px solid #ee4d2d', color: '#ee4d2d', fontSize: '0.75rem', borderRadius: '2px' }}>{addr.label}</span>}
+                                            {addr.isPrimary && <span style={{ padding: '4px 8px', border: '1px solid var(--border)', background: '#f8fafc', color: 'var(--muted)', fontSize: '0.75rem', borderRadius: '2px' }}>Utama</span>}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                        </div>
+                        )}
                     </>
                 )}
 
@@ -380,6 +534,108 @@ export default function ProfilePage() {
                 )}
 
             </div>
+
+            {/* ADDRESS MODAL */}
+            {addressModalOpen && (
+                <div style={{position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)'}}>
+                    <div style={{background: '#fff', borderRadius: '8px', width: '90%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column'}}>
+                        <div style={{padding: '24px', borderBottom: '1px solid var(--border)'}}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--dark)', margin: 0 }}>{newAddress.id ? "Ubah Alamat" : "Alamat Baru"}</h2>
+                        </div>
+                        
+                        <div style={{padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px'}}>
+                            <div style={{ display: 'flex', gap: '16px' }}>
+                                <div style={{ flex: 1 }}>
+                                    <input type="text" className="input" placeholder="Nama Lengkap" value={newAddress.name} onChange={(e) => setNewAddress({...newAddress, name: e.target.value})} style={{ width: '100%' }} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <input type="tel" className="input" placeholder="Nomor Telepon (08...)" value={newAddress.phone} maxLength={12} onChange={(e) => setNewAddress({...newAddress, phone: e.target.value.replace(/\D/g, '')})} style={{ width: '100%' }} />
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <input type="text" className="input" placeholder="Provinsi, Kota, Kecamatan, Kode Pos" value={newAddress.region} onChange={(e) => setNewAddress({...newAddress, region: e.target.value})} style={{ width: '100%' }} />
+                            </div>
+                            
+                            <div>
+                                <textarea className="input" rows="3" placeholder="Nama Jalan, Gedung, No. Rumah" value={newAddress.street} onChange={(e) => setNewAddress({...newAddress, street: e.target.value})} style={{ width: '100%', resize: 'vertical' }} />
+                            </div>
+                            
+                            <div>
+                                <input type="text" className="input" placeholder="Detail Lainnya (Cth: Blok / Unit No., Patokan)" value={newAddress.detail} onChange={(e) => setNewAddress({...newAddress, detail: e.target.value})} style={{ width: '100%' }} />
+                            </div>
+                            
+                            <div onClick={() => { setMapModalOpen(true); setTempCoordinates(newAddress.coordinates) }} style={{ height: '120px', background: newAddress.coordinates ? '#f0fdf4' : '#f8fafc', border: `1px dashed ${newAddress.coordinates ? '#22c55e' : '#cbd5e1'}`, borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: newAddress.coordinates ? '#166534' : 'var(--muted)', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = newAddress.coordinates ? '#dcfce7' : '#f1f5f9'} onMouseLeave={(e) => e.currentTarget.style.background = newAddress.coordinates ? '#f0fdf4' : '#f8fafc'}>
+                                {newAddress.coordinates ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', pointerEvents: 'none' }}>
+                                        <i className="fas fa-map-marker-alt fa-2x" style={{ color: '#22c55e' }}></i>
+                                        <div style={{ fontWeight: 600 }}>Lokasi Tersimpan</div>
+                                        <div style={{ fontSize: '0.8rem' }}>{newAddress.coordinates.lat.toFixed(4)}, {newAddress.coordinates.lng.toFixed(4)}</div>
+                                    </div>
+                                ) : (
+                                    <div style={{ background: '#fff', padding: '8px 16px', borderRadius: '4px', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'none' }}>
+                                        <i className="fas fa-plus"></i> Tambah Lokasi Peta
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div>
+                                <div style={{ fontSize: '0.9rem', color: 'var(--muted)', marginBottom: '8px' }}>Tandai Sebagai:</div>
+                                <div style={{ display: 'flex', gap: '12px' }}>
+                                    <button 
+                                        onClick={() => setNewAddress({...newAddress, label: 'Rumah'})} 
+                                        style={{ padding: '8px 24px', background: '#fff', border: `1px solid ${newAddress.label === 'Rumah' ? '#ee4d2d' : '#cbd5e1'}`, color: newAddress.label === 'Rumah' ? '#ee4d2d' : 'var(--dark)', borderRadius: '4px', cursor: 'pointer', outline: 'none' }}
+                                    >Rumah</button>
+                                    <button 
+                                        onClick={() => setNewAddress({...newAddress, label: 'Kantor'})} 
+                                        style={{ padding: '8px 24px', background: '#fff', border: `1px solid ${newAddress.label === 'Kantor' ? '#ee4d2d' : '#cbd5e1'}`, color: newAddress.label === 'Kantor' ? '#ee4d2d' : 'var(--dark)', borderRadius: '4px', cursor: 'pointer', outline: 'none' }}
+                                    >Kantor</button>
+                                </div>
+                            </div>
+                            
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                                <input type="checkbox" id="isPrimary" checked={newAddress.isPrimary} onChange={(e) => setNewAddress({...newAddress, isPrimary: e.target.checked})} style={{ width: '18px', height: '18px', accentColor: '#ee4d2d' }} />
+                                <label htmlFor="isPrimary" style={{ color: 'var(--muted)', fontSize: '0.95rem', cursor: 'pointer' }}>Atur sebagai Alamat Pribadi</label>
+                            </div>
+                        </div>
+                        
+                        <div style={{padding: '20px 24px', display: 'flex', justifyContent: 'flex-end', gap: '12px'}}>
+                            <button className="btn btnOutline" onClick={() => setAddressModalOpen(false)} style={{ border: 'none', background: 'transparent' }}>Nanti Saja</button>
+                            <button className="btn btnPrimary" onClick={handleSaveNewAddress} disabled={saving} style={{background: '#ee4d2d', color: '#fff', border: 'none', padding: '10px 40px', borderRadius: '4px'}}>
+                                {saving ? "Menyimpan..." : "OK"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MAP MODAL */}
+            {mapModalOpen && (
+                <div style={{position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)'}}>
+                    <div style={{background: '#fff', borderRadius: '8px', width: '90%', maxWidth: '600px', overflow: 'hidden', display: 'flex', flexDirection: 'column'}}>
+                        <div style={{padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--dark)', margin: 0 }}>Pilih Lokasi</h2>
+                            <button onClick={() => setMapModalOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: 'var(--muted)' }}><i className="fas fa-times"></i></button>
+                        </div>
+                        
+                        <div style={{ padding: '16px' }}>
+                            <MapPicker position={tempCoordinates} onPositionChange={setTempCoordinates} />
+                        </div>
+                        
+                        <div style={{padding: '16px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: '12px', background: '#f8fafc'}}>
+                            <button className="btn btnOutline" onClick={() => setMapModalOpen(false)} style={{ border: 'none', background: 'transparent' }}>Batal</button>
+                            <button className="btn btnPrimary" onClick={() => {
+                                if (tempCoordinates) {
+                                    setNewAddress({...newAddress, coordinates: tempCoordinates})
+                                }
+                                setMapModalOpen(false)
+                            }} style={{background: '#ee4d2d', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '4px'}}>
+                                Simpan Lokasi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* CROP MODAL */}
             {cropModalOpen && (

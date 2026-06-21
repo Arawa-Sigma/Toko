@@ -4,20 +4,48 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
+import { createClient } from "@/lib/supabaseClient"
+
 export default function CheckoutPage() {
     const router = useRouter()
-    const { cart, removeFromCart, updateQuantity, clearCart } = useStore()
+    const { cart, removeFromCart, updateCartQty, clearCart } = useStore()
     const showToast = useUIStore((state) => state.showToast)
+    const supabase = createClient()
 
     const [paymentMethod, setPaymentMethod] = useState("")
     const [courier, setCourier] = useState("Ambil Sendiri")
     const [voucher, setVoucher] = useState("")
     const [buyerName, setBuyerName] = useState("")
+    const [isProcessing, setIsProcessing] = useState(false)
 
-    const cartItemCount = Object.values(cart).reduce((sum, item) => sum + item.qty, 0)
+    const [products, setProducts] = useState([])
+    const [loadingProducts, setLoadingProducts] = useState(true)
+
+    useEffect(() => {
+        async function fetchProducts() {
+            const { data } = await supabase.from('products').select('*')
+            if (data) setProducts(data)
+            setLoadingProducts(false)
+        }
+        fetchProducts()
+    }, [])
+
+    const enrichedCart = cart.map(item => {
+        const product = products.find(p => p.id === item.productId)
+        return {
+            ...item,
+            id: item.productId, // map productId to id for UI consistency
+            name: product ? product.name : 'Produk Tidak Ditemukan',
+            price: product ? product.price : 0,
+            image_url: product ? product.image_url : null,
+            max_stock: product ? Number(product.stock) : 0
+        }
+    }).filter(item => item.price > 0) // only show valid items
+
+    const cartItemCount = enrichedCart.reduce((sum, item) => sum + item.qty, 0)
 
     // Calculate Totals
-    const subtotal = Object.values(cart).reduce((sum, item) => sum + (item.price * item.qty), 0)
+    const subtotal = enrichedCart.reduce((sum, item) => sum + (item.price * item.qty), 0)
     const tax = subtotal * 0.10
 
     let adminFee = 0
@@ -32,7 +60,7 @@ export default function CheckoutPage() {
 
     const total = subtotal + tax + shippingFee + adminFee - discount
 
-    const handleCheckout = () => {
+    const handleCheckout = async () => {
         if (!buyerName) {
             showToast("Nama penerima belum diisi!", "error")
             return
@@ -41,9 +69,60 @@ export default function CheckoutPage() {
             showToast("Keranjang belanja masih kosong!", "error")
             return
         }
-        showToast("Checkout berhasil! Namun karena belum terhubung ke database pesanan, data akan diriset.", "success")
+
+        setIsProcessing(true)
+
+        // Cek ketersediaan stok terlebih dahulu (Mencegah "penimbun" telat bayar)
+        const outOfStockItems = enrichedCart.filter(item => {
+            const currentStock = products.find(p => p.id === item.id)?.stock || 0
+            return currentStock < item.qty
+        })
+
+        if (outOfStockItems.length > 0) {
+            const itemNames = outOfStockItems.map(i => i.name).join(", ")
+            showToast(`Maaf, stok tidak cukup untuk: ${itemNames}. Orang lain mungkin telah membelinya.`, "error")
+            setIsProcessing(false)
+            return
+        }
+        
+        // Simpan ke Supabase tabel orders
+        const orderPayload = {
+            customer_name: buyerName,
+            total_amount: total,
+            status: 'Menunggu'
+        }
+
+        const { data, error } = await supabase.from('orders').insert([orderPayload]).select()
+
+        if (error) {
+            console.error("Supabase Insert Error:", error)
+            showToast("Gagal membuat pesanan, silakan coba lagi.", "error")
+            setIsProcessing(false)
+            return
+        }
+
+        // Mengurangi stok produk di database
+        const stockUpdates = enrichedCart.map(item => {
+            const currentStock = products.find(p => p.id === item.id)?.stock || 0
+            const newStock = Math.max(0, currentStock - item.qty)
+            return supabase.from('products').update({ stock: newStock }).eq('id', item.id)
+        })
+
+        await Promise.all(stockUpdates)
+
+        // Insert Notifikasi
+        await supabase.from('notifications').insert([{
+            title: `Pesanan Baru`,
+            message: `Anda menerima pesanan baru dari ${buyerName} senilai Rp ${total.toLocaleString('id-ID')}.`,
+            type: 'Order',
+            unread: true
+        }])
+
+        setIsProcessing(false)
+
+        showToast("Pesanan berhasil dibuat! Silakan tunggu konfirmasi admin.", "success")
         clearCart()
-        router.push('/invoice')
+        router.push('/dashboard/orders') // Mengarahkan sementara ke dashboard orders agar user/admin bisa lihat pesanan yang baru masuk
     }
 
     return (
@@ -156,29 +235,38 @@ export default function CheckoutPage() {
                         </div>
 
                         <div className="cartList" id="cartList" style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {Object.keys(cart).length === 0 ? (
+                            {enrichedCart.length === 0 ? (
                                 <div className="p" style={{ textAlign: 'center', padding: '40px 0', background: '#f8fafc', borderRadius: '12px', border: '1px dashed var(--border)' }}>
                                     <i className="fas fa-shopping-basket" style={{ fontSize: '2rem', color: 'var(--border)', marginBottom: '10px' }}></i>
                                     <div style={{ fontWeight: 700 }}>Keranjang masih kosong</div>
                                     <div style={{ fontSize: '0.8rem', marginTop: '4px' }}>Yuk, tambah produk dari Etalase!</div>
                                 </div>
+                            ) : loadingProducts ? (
+                                <div className="p" style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)' }}>Memuat data produk...</div>
                             ) : (
-                                Object.values(cart).map(item => (
-                                    <div key={item.id} style={{ display: 'flex', gap: '12px', padding: '12px', background: '#f8fafc', borderRadius: '12px', border: '1px solid var(--border)', alignItems: 'center' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: 900, fontSize: '0.95rem' }}>{item.name}</div>
-                                            <div style={{ color: 'var(--secondary)', fontWeight: 800, marginTop: '4px' }}>Rp {item.price.toLocaleString('id-ID')}</div>
+                                enrichedCart.map(item => {
+                                    const isInvalid = item.qty > item.max_stock;
+                                    return (
+                                        <div key={item.id} style={{ display: 'flex', gap: '12px', padding: '12px', background: isInvalid ? '#f1f5f9' : '#f8fafc', borderRadius: '12px', border: `1px solid ${isInvalid ? '#ef4444' : 'var(--border)'}`, alignItems: 'center', opacity: isInvalid ? 0.7 : 1 }}>
+                                            <div style={{ width: '48px', height: '48px', borderRadius: '8px', overflow: 'hidden', background: '#fff', border: '1px solid var(--border)' }}>
+                                                <img src={item.image_url || 'https://cdn-icons-png.flaticon.com/512/3081/3081840.png'} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: isInvalid ? 'grayscale(100%)' : 'none' }} />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontWeight: 900, fontSize: '0.95rem', color: isInvalid ? '#94a3b8' : 'inherit' }}>{item.name}</div>
+                                                <div style={{ color: isInvalid ? '#94a3b8' : 'var(--secondary)', fontWeight: 800, marginTop: '4px' }}>Rp {item.price.toLocaleString('id-ID')}</div>
+                                                {isInvalid && <div style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, marginTop: '4px' }}>Stok hanya sisa {item.max_stock}</div>}
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', padding: '4px', borderRadius: '14px', border: '1px solid var(--border)' }}>
+                                                <button className="qtyMiniBtn" style={{ border: 'none', background: '#f1f5f9' }} onClick={() => updateCartQty(item.id, item.qty - 1)}>-</button>
+                                                <span style={{ fontWeight: 900, width: '28px', textAlign: 'center' }}>{item.qty}</span>
+                                                <button className="qtyMiniBtn" style={{ border: 'none', background: '#f1f5f9', opacity: isInvalid ? 0.5 : 1 }} onClick={() => updateCartQty(item.id, item.qty + 1)} disabled={item.qty >= item.max_stock}>+</button>
+                                            </div>
+                                            <button className="btn btnDanger" style={{ padding: '8px 12px', borderRadius: '12px' }} onClick={() => removeFromCart(item.id)}>
+                                                <i className="fas fa-trash"></i>
+                                            </button>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', padding: '4px', borderRadius: '14px', border: '1px solid var(--border)' }}>
-                                            <button className="qtyMiniBtn" style={{ border: 'none', background: '#f1f5f9' }} onClick={() => updateQuantity(item.id, item.qty - 1)}>-</button>
-                                            <span style={{ fontWeight: 900, width: '28px', textAlign: 'center' }}>{item.qty}</span>
-                                            <button className="qtyMiniBtn" style={{ border: 'none', background: '#f1f5f9' }} onClick={() => updateQuantity(item.id, item.qty + 1)}>+</button>
-                                        </div>
-                                        <button className="btn btnDanger" style={{ padding: '8px 12px', borderRadius: '12px' }} onClick={() => removeFromCart(item.id)}>
-                                            <i className="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                ))
+                                    )
+                                })
                             )}
                         </div>
 
@@ -216,9 +304,10 @@ export default function CheckoutPage() {
                             id="btnCheckout"
                             style={{ marginTop: '12px', width: '100%', justifyContent: 'center' }}
                             onClick={handleCheckout}
-                            disabled={Object.keys(cart).length === 0}
+                            disabled={Object.keys(cart).length === 0 || isProcessing}
                         >
-                            <i className="fas fa-credit-card"></i> Selesaikan Manifest Transaksi
+                            <i className={isProcessing ? "fas fa-spinner fa-spin" : "fas fa-credit-card"}></i> 
+                            {isProcessing ? " Memproses..." : " Selesaikan Manifest Transaksi"}
                         </button>
                     </div>
                 </div>
