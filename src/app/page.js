@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useStore, useUIStore } from "@/lib/store"
 import { createClient } from "@/lib/supabaseClient"
+import HeroCarousel from "@/components/HeroCarousel"
 
 export default function Storefront() {
   const [products, setProducts] = useState([])
@@ -162,31 +163,8 @@ export default function Storefront() {
     <>
       <main className="contentArea" id="mainContent">
         <section id="pageEtalase">
-            {/* The BIG Top Banner */}
-            <div className="hero" style={{
-              background: "linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=2000')", 
-              backgroundSize: "cover", 
-              backgroundPosition: "center", 
-              minHeight: "260px", 
-              display: "flex", 
-              alignItems: "center", 
-              borderRadius: "22px", 
-              color: "white", 
-              position: "relative"
-            }}>
-                <div style={{padding: "28px 35px", maxWidth: "620px"}}>
-                    <div style={{display: "inline-block", background: "rgba(255,255,255,0.4)", backdropFilter: "blur(4px)", padding: "4px 14px", borderRadius: "999px", fontSize: "0.75rem", marginBottom: "12px", fontWeight: 700}}>
-                        <i className="fas fa-store"></i> Toko Kelontong Terpercaya
-                    </div>
-                    <h2 style={{fontSize: "2.5rem", fontWeight: 900, lineHeight: 1.2, marginBottom: "16px"}}>Belanja Sembako Mudah & Terjangkau</h2>
-                    <p style={{fontSize: "0.85rem", opacity: 0.95, maxWidth: "420px", marginBottom: "24px"}}>Ribuan pelanggan sudah percaya kepada kami. Nikmati pengalaman belanja yang cepat, aman, dan hemat.</p>
-                    <div style={{display: "flex", gap: "10px", flexWrap: "wrap"}}>
-                        <button className="btn btnPrimary" style={{padding: "8px 24px", fontSize: "0.8rem"}} onClick={() => document.getElementById('landingGrid').scrollIntoView({behavior:'smooth'})}>
-                            <i className="fas fa-shopping-bag"></i> Mulai Belanja
-                        </button>
-                    </div>
-                </div>
-            </div>
+            {/* Tokopedia-Style Hero Carousel */}
+            <HeroCarousel />
 
             {/* Tokopedia-Style Combined Card */}
             <div className="card sectionPad" style={{marginTop:"30px", padding: "24px"}}>

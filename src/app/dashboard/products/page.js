@@ -18,8 +18,52 @@ export default function ProductsPage() {
         stock: '',
         category: '',
         image_url: '',
-        description: ''
+        description: '',
+        variants: [],
+        specifications: []
     })
+
+    function addVariant() {
+        setFormData(prev => ({
+            ...prev,
+            variants: [...prev.variants, { id: Date.now().toString(), name: '', price: '', stock: '' }]
+        }))
+    }
+    
+    function updateVariant(id, field, value) {
+        setFormData(prev => ({
+            ...prev,
+            variants: prev.variants.map(v => v.id === id ? { ...v, [field]: value } : v)
+        }))
+    }
+    
+    function removeVariant(id) {
+        setFormData(prev => ({
+            ...prev,
+            variants: prev.variants.filter(v => v.id !== id)
+        }))
+    }
+    
+    function addSpec() {
+        setFormData(prev => ({
+            ...prev,
+            specifications: [...prev.specifications, { id: Date.now().toString(), key: '', value: '' }]
+        }))
+    }
+    
+    function updateSpec(id, field, value) {
+        setFormData(prev => ({
+            ...prev,
+            specifications: prev.specifications.map(s => s.id === id ? { ...s, [field]: value } : s)
+        }))
+    }
+    
+    function removeSpec(id) {
+        setFormData(prev => ({
+            ...prev,
+            specifications: prev.specifications.filter(s => s.id !== id)
+        }))
+    }
 
     const supabase = createClient()
 
@@ -43,7 +87,7 @@ export default function ProductsPage() {
 
     function openAddModal() {
         setEditingId(null)
-        setFormData({ name: '', price: '', cost: '', stock: '', category: '', image_url: '', description: '' })
+        setFormData({ name: '', price: '', cost: '', stock: '', category: '', image_url: '', description: '', variants: [], specifications: [] })
         setShowModal(true)
     }
 
@@ -56,7 +100,9 @@ export default function ProductsPage() {
             stock: product.stock || '',
             category: product.category || '',
             image_url: product.image_url || '',
-            description: product.description || ''
+            description: product.description || '',
+            variants: product.variants || [],
+            specifications: product.specifications || []
         })
         setShowModal(true)
     }
@@ -103,14 +149,25 @@ export default function ProductsPage() {
         const cleanName = formData.name.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
         const slug = editingId ? null : `${cleanName}-${Math.random().toString(36).substr(2, 6)}` // Only generate random suffix on create. Update can keep old slug or we just create a slug.
 
+        let finalStock = Number(formData.stock)
+        let finalPrice = Number(formData.price)
+
+        if (formData.variants && formData.variants.length > 0) {
+            finalStock = formData.variants.reduce((acc, v) => acc + Number(v.stock || 0), 0)
+            const validPrices = formData.variants.map(v => Number(v.price)).filter(p => p > 0)
+            if (validPrices.length > 0) finalPrice = Math.min(...validPrices)
+        }
+
         const payload = {
             name: formData.name,
-            price: Number(formData.price),
+            price: finalPrice,
             cost: Number(formData.cost),
-            stock: Number(formData.stock),
+            stock: finalStock,
             category: formData.category || null,
             image_url: formData.image_url || null,
-            description: formData.description || null
+            description: formData.description || null,
+            variants: formData.variants || [],
+            specifications: formData.specifications || []
         }
 
         if (!editingId) {
@@ -290,8 +347,8 @@ export default function ProductsPage() {
                                         </select>
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>Sisa Stok *</label>
-                                        <input required type="number" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem' }} placeholder="0" />
+                                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>Sisa Stok {(formData.variants && formData.variants.length > 0) ? '(Otomatis dari varian)' : '*'}</label>
+                                        <input required={!(formData.variants && formData.variants.length > 0)} disabled={formData.variants && formData.variants.length > 0} type="number" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem', background: (formData.variants && formData.variants.length > 0) ? '#f1f5f9' : '#fff' }} placeholder="0" />
                                     </div>
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -300,8 +357,8 @@ export default function ProductsPage() {
                                         <input required type="number" value={formData.cost} onChange={e => setFormData({...formData, cost: e.target.value})} style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem' }} placeholder="Contoh: 10000" />
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>Harga Jual (Rp) *</label>
-                                        <input required type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem' }} placeholder="Contoh: 15000" />
+                                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>Harga Jual (Rp) {(formData.variants && formData.variants.length > 0) ? '(Otomatis dari varian)' : '*'}</label>
+                                        <input required={!(formData.variants && formData.variants.length > 0)} disabled={formData.variants && formData.variants.length > 0} type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem', background: (formData.variants && formData.variants.length > 0) ? '#f1f5f9' : '#fff' }} placeholder="Contoh: 15000" />
                                     </div>
                                 </div>
                                 <div>
@@ -340,7 +397,51 @@ export default function ProductsPage() {
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>Deskripsi</label>
-                                    <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} rows="3" style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem', resize: 'none' }} placeholder="Keterangan opsional mengenai produk..."></textarea>
+                                    <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} rows="6" style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem', resize: 'vertical', minHeight: '100px' }} placeholder="Keterangan lengkap mengenai produk..."></textarea>
+                                </div>
+
+                                {/* Variants Editor */}
+                                <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                        <label style={{ fontSize: '0.9rem', fontWeight: 800, color: '#334155' }}>Varian Produk</label>
+                                        <button type="button" onClick={addVariant} style={{ background: '#e0e7ff', color: '#4f46e5', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>+ Tambah Varian</button>
+                                    </div>
+                                    {formData.variants && formData.variants.length > 0 ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            {formData.variants.map((v, i) => (
+                                                <div key={v.id} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#f8fafc', padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                                    <input required type="text" placeholder="Nama Varian (misal: Spesial)" value={v.name} onChange={e => updateVariant(v.id, 'name', e.target.value)} style={{ flex: 1.5, padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+                                                    <input required type="number" placeholder="Harga" value={v.price} onChange={e => updateVariant(v.id, 'price', e.target.value)} style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+                                                    <input required type="number" placeholder="Stok" value={v.stock} onChange={e => updateVariant(v.id, 'stock', e.target.value)} style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+                                                    <button type="button" onClick={() => removeVariant(v.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '8px' }}><i className="fas fa-trash"></i></button>
+                                                </div>
+                                            ))}
+                                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}><i className="fas fa-info-circle"></i> Jika ada varian, harga jual produk akan diambil dari harga terendah, dan stok akan diakumulasi.</div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic' }}>Tidak ada varian. Produk ini adalah produk tunggal.</div>
+                                    )}
+                                </div>
+
+                                {/* Specifications Editor */}
+                                <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                        <label style={{ fontSize: '0.9rem', fontWeight: 800, color: '#334155' }}>Spesifikasi</label>
+                                        <button type="button" onClick={addSpec} style={{ background: '#fce7f3', color: '#db2777', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>+ Tambah Spek</button>
+                                    </div>
+                                    {formData.specifications && formData.specifications.length > 0 ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            {formData.specifications.map((s, i) => (
+                                                <div key={s.id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                    <input required type="text" placeholder="Key (misal: Kondisi)" value={s.key} onChange={e => updateSpec(s.id, 'key', e.target.value)} style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+                                                    <input required type="text" placeholder="Value (misal: Baru)" value={s.value} onChange={e => updateSpec(s.id, 'value', e.target.value)} style={{ flex: 2, padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+                                                    <button type="button" onClick={() => removeSpec(s.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '8px' }}><i className="fas fa-trash"></i></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic' }}>Belum ada spesifikasi tambahan.</div>
+                                    )}
                                 </div>
                             </form>
                         </div>

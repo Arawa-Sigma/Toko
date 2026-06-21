@@ -32,13 +32,15 @@ export default function CheckoutPage() {
 
     const enrichedCart = cart.map(item => {
         const product = products.find(p => p.id === item.productId)
+        const isVariant = !!item.variant
         return {
             ...item,
-            id: item.productId, // map productId to id for UI consistency
-            name: product ? product.name : 'Produk Tidak Ditemukan',
-            price: product ? product.price : 0,
+            id: item.uniqueId || item.productId, // Use uniqueId for cart operations
+            productId: item.productId, // keep original reference
+            name: product ? (isVariant ? `${product.name} - ${item.variant.name}` : product.name) : 'Produk Tidak Ditemukan',
+            price: product ? (isVariant ? Number(item.variant.price) : product.price) : 0,
             image_url: product ? product.image_url : null,
-            max_stock: product ? Number(product.stock) : 0
+            max_stock: product ? (isVariant ? Number(item.variant.stock) : Number(product.stock)) : 0
         }
     }).filter(item => item.price > 0) // only show valid items
 
@@ -103,10 +105,21 @@ export default function CheckoutPage() {
 
         // Mengurangi stok produk di database
         const stockUpdates = enrichedCart.map(item => {
-            const currentStock = products.find(p => p.id === item.id)?.stock || 0
-            const newStock = Math.max(0, currentStock - item.qty)
-            return supabase.from('products').update({ stock: newStock }).eq('id', item.id)
-        })
+            const product = products.find(p => p.id === item.productId)
+            if (!product) return null
+            
+            if (item.variant) {
+                // Kurangi stok varian, lalu kurangi stok total produk juga
+                const updatedVariants = product.variants.map(v => 
+                    v.id === item.variant.id ? { ...v, stock: Math.max(0, v.stock - item.qty) } : v
+                )
+                const newTotalStock = Math.max(0, product.stock - item.qty)
+                return supabase.from('products').update({ stock: newTotalStock, variants: updatedVariants }).eq('id', product.id)
+            } else {
+                const newStock = Math.max(0, product.stock - item.qty)
+                return supabase.from('products').update({ stock: newStock }).eq('id', product.id)
+            }
+        }).filter(Boolean)
 
         await Promise.all(stockUpdates)
 

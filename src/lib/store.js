@@ -17,18 +17,19 @@ export const useStore = create(
 
       // Cart State
       cart: [],
-      addToCart: (product, qty = 1) => set((state) => {
-        const existing = state.cart.find(i => i.productId === product.id)
+      addToCart: (product, qty = 1, variant = null) => set((state) => {
+        const uniqueId = variant ? `${product.id}-${variant.id}` : product.id;
+        const existing = state.cart.find(i => (i.uniqueId || i.productId) === uniqueId)
         if (existing) {
-          return { cart: state.cart.map(i => i.productId === product.id ? { ...i, qty: i.qty + qty } : i) }
+          return { cart: state.cart.map(i => (i.uniqueId || i.productId) === uniqueId ? { ...i, qty: i.qty + qty } : i) }
         }
-        return { cart: [...state.cart, { productId: product.id, qty }] }
+        return { cart: [...state.cart, { uniqueId, productId: product.id, qty, variant }] }
       }),
-      removeFromCart: (productId) => set((state) => ({
-        cart: state.cart.filter(i => i.productId !== productId)
+      removeFromCart: (uniqueId) => set((state) => ({
+        cart: state.cart.filter(i => (i.uniqueId || i.productId) !== uniqueId)
       })),
-      updateCartQty: (productId, qty) => set((state) => ({
-        cart: state.cart.map(i => i.productId === productId ? { ...i, qty } : i)
+      updateCartQty: (uniqueId, qty) => set((state) => ({
+        cart: state.cart.map(i => (i.uniqueId || i.productId) === uniqueId ? { ...i, qty } : i)
       })),
       clearCart: () => set({ cart: [] }),
 

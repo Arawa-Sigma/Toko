@@ -22,6 +22,7 @@ export default function ProductDetail() {
     const [qty, setQty] = useState(1)
     const [isSticky, setIsSticky] = useState(false)
     const [activeTab, setActiveTab] = useState('detail')
+    const [selectedVariant, setSelectedVariant] = useState(null)
 
     const { cart, addToCart, removeFromCart, updateCartQty, wishlist, toggleWishlist } = useStore()
     const showToast = useUIStore((state) => state.showToast)
@@ -56,6 +57,9 @@ export default function ProductDetail() {
 
             if (prodData) {
                 setProduct(prodData)
+                if (prodData.variants && prodData.variants.length > 0) {
+                    setSelectedVariant(prodData.variants[0])
+                }
 
                 // Fetch Reviews
                 const { data: revData } = await supabase
@@ -136,9 +140,9 @@ export default function ProductDetail() {
         isUnlimited = true
     }
 
-    const price = Number(product.price || 0)
-    const finalPrice = hasDisc ? Math.round(price - (price * (product.discount / 100))) : price
-    const stockTotal = Number(product.stock || 0)
+    const basePrice = selectedVariant ? Number(selectedVariant.price) : Number(product.price)
+    const finalPrice = hasDisc ? Math.round(basePrice - (basePrice * (product.discount / 100))) : basePrice
+    const stockTotal = selectedVariant ? Number(selectedVariant.stock) : Number(product.stock || 0)
     const isOut = stockTotal <= 0
 
     const reviewCount = reviews.length;
@@ -164,7 +168,7 @@ export default function ProductDetail() {
             showToast("Maaf, stok habis!", "error")
             return
         }
-        addToCart(product, qty)
+        addToCart(product, qty, selectedVariant)
         showToast("Berhasil dimasukkan ke keranjang", "success")
     }
 
@@ -173,7 +177,7 @@ export default function ProductDetail() {
             showToast("Maaf, stok habis!", "error")
             return
         }
-        addToCart(product, qty)
+        addToCart(product, qty, selectedVariant)
         router.push("/keranjang")
     }
 
@@ -253,23 +257,24 @@ export default function ProductDetail() {
                     <div style={{ fontSize: '2rem', fontWeight: 800, color: '#111827', marginBottom: '24px' }}>
                         Rp{finalPrice.toLocaleString('id-ID')}
                         {hasDisc && <span style={{ marginLeft: '12px', fontSize: '1rem', background: '#fce7f3', color: '#db2777', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>{product.discount}%</span>}
-                        {hasDisc && <span style={{ marginLeft: '8px', fontSize: '1rem', textDecoration: 'line-through', color: 'var(--muted)', fontWeight: 500 }}>Rp{price.toLocaleString('id-ID')}</span>}
+                        {hasDisc && <span style={{ marginLeft: '8px', fontSize: '1rem', textDecoration: 'line-through', color: 'var(--muted)', fontWeight: 500 }}>Rp{basePrice.toLocaleString('id-ID')}</span>}
                     </div>
 
-                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', marginBottom: '24px' }}>
-                        <div style={{ fontWeight: 800, fontSize: '0.95rem', marginBottom: '12px' }}>Pilih varian: <span style={{ color: 'var(--muted)', fontWeight: 400 }}>Spesial</span></div>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                            <button style={{ padding: '6px 16px', borderRadius: '8px', border: '1px solid var(--primary)', background: '#e6f7eb', color: 'var(--primary)', fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <img src={img} alt="var1" style={{ width: '24px', height: '24px', borderRadius: '4px', objectFit: 'cover' }} /> Spesial
-                            </button>
-                            <button style={{ padding: '6px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: '#fff', color: '#334155', fontWeight: 500, cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <img src={img} alt="var2" style={{ width: '24px', height: '24px', borderRadius: '4px', objectFit: 'cover' }} /> Reguler
-                            </button>
-                            <button style={{ padding: '6px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: '#fff', color: '#334155', fontWeight: 500, cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <img src={img} alt="var3" style={{ width: '24px', height: '24px', borderRadius: '4px', objectFit: 'cover' }} /> Ekstra
-                            </button>
+                    {product.variants && product.variants.length > 0 && (
+                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', marginBottom: '24px' }}>
+                            <div style={{ fontWeight: 800, fontSize: '0.95rem', marginBottom: '12px' }}>Pilih varian: <span style={{ color: 'var(--muted)', fontWeight: 400 }}>{selectedVariant?.name}</span></div>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                {product.variants.map((v, idx) => {
+                                    const isSelected = selectedVariant?.id === v.id
+                                    return (
+                                        <button key={v.id} onClick={() => { setSelectedVariant(v); setQty(1); }} style={{ padding: '6px 16px', borderRadius: '8px', border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`, background: isSelected ? '#e6f7eb' : '#fff', color: isSelected ? 'var(--primary)' : '#334155', fontWeight: isSelected ? 700 : 500, cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <img src={img} alt={v.name} style={{ width: '24px', height: '24px', borderRadius: '4px', objectFit: 'cover' }} /> {v.name}
+                                        </button>
+                                    )
+                                })}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     <div style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '16px 0', marginBottom: '24px' }}>
                         <div style={{ display: 'flex', gap: '32px', color: 'var(--primary)', fontWeight: 700, fontSize: '1rem', marginBottom: '16px' }}>
@@ -278,12 +283,12 @@ export default function ProductDetail() {
                         </div>
                         <div style={{ fontSize: '0.95rem', color: '#334155', lineHeight: '1.8' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', marginBottom: '20px' }}>
-                                <div style={{ color: 'var(--muted)' }}>Kondisi:</div>
-                                <div>Baru</div>
-                                <div style={{ color: 'var(--muted)' }}>Min. Beli:</div>
-                                <div>1 Buah</div>
                                 <div style={{ color: 'var(--muted)' }}>Kategori:</div>
                                 <div style={{ color: 'var(--primary)', fontWeight: 700, cursor: 'pointer' }}>{product.category}</div>
+                                {product.specifications && product.specifications.map((s, idx) => [
+                                    <div key={`k-${idx}`} style={{ color: 'var(--muted)' }}>{s.key}:</div>,
+                                    <div key={`v-${idx}`}>{s.value}</div>
+                                ])}
                             </div>
                             <div style={{ whiteSpace: 'pre-wrap' }}>
                                 {product.description || "Tidak ada deskripsi untuk produk ini."}

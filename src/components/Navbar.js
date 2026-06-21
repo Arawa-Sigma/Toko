@@ -8,7 +8,7 @@ import FloatingChat from './FloatingChat'
 
 export default function Navbar() {
   const pathname = usePathname()
-  const { landingSearch, setLandingSearch, session, setSession, logout } = useStore()
+  const { landingSearch, setLandingSearch, session, setSession, logout, cart = [] } = useStore()
   const showToast = useUIStore((state) => state.showToast)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isNotifOpen, setIsNotifOpen] = useState(false)
@@ -55,43 +55,46 @@ export default function Navbar() {
   return (
     <>
       <div className="nav" id="fullNav">
-        <Link href="/" className="brand" style={{cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center'}}>
+        <Link href="/" className="brand" style={{cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', order: 1}}>
           <div className="logo-text" style={{fontSize: '1.25rem', fontWeight: 900, display: 'flex', alignItems: 'center', letterSpacing: '-0.5px'}}>
             <span style={{color: 'var(--dark)'}}>Sembako</span><span style={{color: 'var(--primary)'}}>Berkah</span>
           </div>
           <img src="/logo.png" alt="SembakoBerkah Logo" className="logo-img" style={{height: '32px', width: 'auto', objectFit: 'contain'}} />
         </Link>
-        <div className="navMenu" id="navMenu" style={{display: 'flex', gap: '4px', alignItems: 'center', paddingLeft: '32px', flex: 1}}>
-          <Link href="/">
-            <button className={`tabBtn ${pathname === '/' ? 'active' : ''}`}>Belanja</button>
-          </Link>
-          <div style={{ width: '1px', height: '18px', background: 'var(--border)', margin: '0 8px' }}></div>
-          <Link href="/keranjang">
-            <button className={`tabBtn ${pathname === '/keranjang' ? 'active' : ''}`}>Keranjang</button>
-          </Link>
-          <div style={{ width: '1px', height: '18px', background: 'var(--border)', margin: '0 8px' }}></div>
-          <Link href="/invoice">
-            <button className={`tabBtn ${pathname === '/invoice' ? 'active' : ''}`}>Invoice</button>
-          </Link>
-        </div>
-        
-        {pathname === '/' && (
-            <div className="nav-search-container">
-                <div style={{position: 'relative', width: '100%'}}>
-                    <input 
-                      id="globalSearch" 
-                      className="search" 
-                      placeholder="Cari sembako murah..."
-                      value={landingSearch}
-                      onChange={(e) => setLandingSearch(e.target.value)}
-                      style={{paddingLeft: '38px', margin: 0, height: '40px'}}
-                    />
-                    <i className="fas fa-search" style={{position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)'}}></i>
+        <div style={{ flex: 1, padding: '0 24px', order: 2 }}>
+            {pathname === '/' && (
+                <div className="nav-search-container" style={{ width: '100%' }}>
+                    <div style={{position: 'relative', width: '100%'}}>
+                        <input 
+                          id="globalSearch" 
+                          className="search" 
+                          placeholder="Cari sembako murah..."
+                          value={landingSearch}
+                          onChange={(e) => setLandingSearch(e.target.value)}
+                          style={{paddingLeft: '38px', margin: 0, height: '40px', width: '100%', borderRadius: '8px', border: '1px solid var(--border)', outline: 'none'}}
+                        />
+                        <i className="fas fa-search" style={{position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)'}}></i>
+                    </div>
                 </div>
-            </div>
-        )}
+            )}
+        </div>
 
-        <div className="navRight" ref={navRightRef}>
+        <div className="navRight" ref={navRightRef} style={{ display: 'flex', alignItems: 'center', gap: '4px', order: 3 }}>
+          
+          {/* Keranjang (Cart) Icon */}
+          <Link href="/keranjang" style={{ textDecoration: 'none' }}>
+            <button className="iconBtn" style={{ position: 'relative' }}>
+              <i className="fas fa-shopping-cart"></i>
+              {cart && cart.length > 0 && (
+                <div style={{ position: 'absolute', top: '2px', right: '0px', background: 'var(--danger)', color: 'white', fontSize: '0.6rem', fontWeight: 'bold', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--card)' }}>
+                  {cart.reduce((acc, item) => acc + item.qty, 0)}
+                </div>
+              )}
+            </button>
+          </Link>
+
+          <div style={{ width: '1px', height: '24px', background: 'var(--border)', margin: '0 8px' }}></div>
+
           <div style={{position: 'relative', display: 'flex'}}>
             <button className="iconBtn" onClick={() => { setIsNotifOpen(!isNotifOpen); setIsDropdownOpen(false); }}>
               <i className="fas fa-bell"></i>
