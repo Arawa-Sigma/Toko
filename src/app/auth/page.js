@@ -97,10 +97,19 @@ export default function AuthPage() {
       return
     }
 
-    showToast(`Pendaftaran berhasil! Selamat datang, ${regName}.`, "success")
-    setTimeout(() => {
-        router.push('/')
-    }, 1000)
+    if (data.session) {
+      setSession(data.session)
+      showToast(`Pendaftaran berhasil! Selamat datang, ${regName}.`, "success")
+      setTimeout(() => {
+          router.push('/')
+      }, 1000)
+    } else {
+      showToast(`Pendaftaran berhasil! Silakan periksa email Anda untuk verifikasi sebelum login.`, "success")
+      setRegEmail("")
+      setRegPassword("")
+      setRegName("")
+      setIsRegister(false)
+    }
   }
 
   const handleLogin = async (e) => {

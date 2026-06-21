@@ -43,6 +43,39 @@ export default function Navbar() {
     return () => subscription.unsubscribe()
   }, [setSession])
 
+  // Validate cart items
+  const removeFromCart = useStore(state => state.removeFromCart)
+  useEffect(() => {
+    const validateCart = async () => {
+      if (!cart || cart.length === 0) return
+      const supabase = createClient()
+      const productIds = cart.map(item => item.productId || item.id).filter(Boolean)
+      
+      if (productIds.length === 0) {
+          // All items are invalid format or missing IDs
+          cart.forEach(item => removeFromCart(item.uniqueId || item.productId || item.id))
+          return
+      }
+
+      try {
+        const { data, error } = await supabase.from('products').select('id').in('id', productIds)
+        if (data) {
+          const validIds = data.map(p => p.id)
+          cart.forEach(item => {
+            const currentId = item.productId || item.id
+            if (!validIds.includes(currentId)) {
+              removeFromCart(item.uniqueId || currentId)
+            }
+          })
+        }
+      } catch (err) {
+        console.error("Error validating cart:", err)
+      }
+    }
+    
+    validateCart()
+  }, [cart.length, removeFromCart])
+
   const handleLogout = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -54,14 +87,15 @@ export default function Navbar() {
 
   return (
     <>
-      <div className="nav" id="fullNav">
+      <div className="nav-wrapper">
+        <div className="nav" id="fullNav">
         <Link href="/" className="brand" style={{cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', order: 1}}>
           <div className="logo-text" style={{fontSize: '1.25rem', fontWeight: 900, display: 'flex', alignItems: 'center', letterSpacing: '-0.5px'}}>
             <span style={{color: 'var(--dark)'}}>Sembako</span><span style={{color: 'var(--primary)'}}>Berkah</span>
           </div>
           <img src="/logo.png" alt="SembakoBerkah Logo" className="logo-img" style={{height: '32px', width: 'auto', objectFit: 'contain'}} />
         </Link>
-        <div style={{ flex: 1, padding: '0 24px', order: 2 }}>
+        <div style={{ flex: 1, padding: '0 24px', order: 2, display: 'flex', justifyContent: 'center' }}>
             {pathname === '/' && (
                 <div className="nav-search-container" style={{ width: '100%' }}>
                     <div style={{position: 'relative', width: '100%'}}>
@@ -71,9 +105,9 @@ export default function Navbar() {
                           placeholder="Cari sembako murah..."
                           value={landingSearch}
                           onChange={(e) => setLandingSearch(e.target.value)}
-                          style={{paddingLeft: '38px', margin: 0, height: '40px', width: '100%', borderRadius: '8px', border: '1px solid var(--border)', outline: 'none'}}
+                          style={{paddingLeft: '44px', margin: 0, height: '44px', width: '100%', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none', background: '#f8fafc', fontSize: '0.95rem'}}
                         />
-                        <i className="fas fa-search" style={{position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)'}}></i>
+                        <i className="fas fa-search" style={{position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', fontSize: '1rem'}}></i>
                     </div>
                 </div>
             )}
@@ -190,6 +224,7 @@ export default function Navbar() {
           )}
         </div>
       </div>
+      </div>
 
       <FloatingChat />
 
@@ -208,7 +243,7 @@ export default function Navbar() {
           order: 3;
           flex: 1;
           padding: 0 20px;
-          max-width: 400px;
+          max-width: 600px;
           display: flex;
           align-items: center;
         }

@@ -29,7 +29,7 @@ export default function OrdersPage() {
     const filteredOrders = orders.filter(o => {
         const matchStatus = filterStatus === 'Semua' || o.status === filterStatus
         const searchStr = searchQuery.toLowerCase()
-        const matchSearch = o.id?.toLowerCase().includes(searchStr) || o.customer_name?.toLowerCase().includes(searchStr)
+        const matchSearch = o.id?.toLowerCase().includes(searchStr) || o.buyer_name?.toLowerCase().includes(searchStr)
         return matchStatus && matchSearch
     })
 
@@ -49,10 +49,13 @@ export default function OrdersPage() {
             case 'Dikirim':
                 return <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '999px', background: '#ecfdf5', color: '#10b981', border: '1px solid #a7f3d0', fontSize: '0.7rem', fontWeight: 700 }}>{status}</span>
             case 'Dibatalkan':
+            case 'Pengembalian Barang':
                 return <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '999px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', fontSize: '0.7rem', fontWeight: 700 }}>{status}</span>
+            case 'Sedang Dikemas':
+                return <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '999px', background: '#eff6ff', color: '#3b82f6', border: '1px solid #bfdbfe', fontSize: '0.7rem', fontWeight: 700 }}>{status}</span>
             default:
-                // Menunggu, Pending, Diproses
-                return <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '999px', background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', fontSize: '0.7rem', fontWeight: 700 }}>{status || 'Menunggu'}</span>
+                // Belum Bayar
+                return <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '999px', background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', fontSize: '0.7rem', fontWeight: 700 }}>{status || 'Belum Bayar'}</span>
         }
     }
 
@@ -71,7 +74,7 @@ export default function OrdersPage() {
                     />
                 </div>
                 <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-                    {['Semua', 'Menunggu', 'Diproses', 'Dikirim', 'Selesai', 'Dibatalkan'].map(stat => (
+                    {['Semua', 'Belum Bayar', 'Sedang Dikemas', 'Dikirim', 'Selesai', 'Dibatalkan', 'Pengembalian Barang'].map(stat => (
                         <button 
                             key={stat}
                             onClick={() => setFilterStatus(stat)}
@@ -126,7 +129,7 @@ export default function OrdersPage() {
                                         </div>
                                     </td>
                                     <td style={{ padding: '16px 20px' }}>
-                                        <div style={{ fontWeight: 700, color: 'var(--dark)', fontSize: '0.9rem' }}>{order.customer_name || 'Pelanggan Umum'}</div>
+                                        <div style={{ fontWeight: 700, color: 'var(--dark)', fontSize: '0.9rem' }}>{order.buyer_name || 'Pelanggan Umum'}</div>
                                         <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>{order.customer_email || order.customer_phone || '-'}</div>
                                     </td>
                                     <td style={{ padding: '16px 20px', fontWeight: 800, color: 'var(--dark)', fontSize: '0.95rem' }}>
@@ -137,15 +140,16 @@ export default function OrdersPage() {
                                     </td>
                                     <td style={{ padding: '16px 20px', textAlign: 'right' }}>
                                         <select 
-                                            value={order.status || 'Menunggu'} 
+                                            value={order.status || 'Belum Bayar'} 
                                             onChange={e => updateOrderStatus(order.id, e.target.value)}
                                             style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.75rem', fontWeight: 700, background: '#f8fafc', color: '#475569', cursor: 'pointer' }}
                                         >
-                                            <option value="Menunggu">Tandai Menunggu</option>
-                                            <option value="Diproses">Tandai Diproses</option>
+                                            <option value="Belum Bayar">Belum Bayar</option>
+                                            <option value="Sedang Dikemas">Sedang Dikemas</option>
                                             <option value="Dikirim">Tandai Dikirim</option>
                                             <option value="Selesai">Tandai Selesai</option>
                                             <option value="Dibatalkan">Batalkan Pesanan</option>
+                                            <option value="Pengembalian Barang">Pengembalian Barang</option>
                                         </select>
                                     </td>
                                 </tr>

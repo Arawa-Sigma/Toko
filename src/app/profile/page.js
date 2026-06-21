@@ -14,13 +14,17 @@ export default function ProfilePage() {
     const showToast = useUIStore((state) => state.showToast)
     
     // Tab State
-    const [activeTab, setActiveTab] = useState("profil")
+    const [activeTab, setActiveTab] = useState("dashboard")
 
     // Profil Form States
     const [username, setUsername] = useState("")
     const [fullName, setFullName] = useState("")
     const [email, setEmail] = useState("")
     const [phone, setPhone] = useState("")
+    
+    // User Orders State
+    const [userOrders, setUserOrders] = useState([])
+    const [loadingOrders, setLoadingOrders] = useState(true)
 
     const [gender, setGender] = useState("")
     const [birthDate, setBirthDate] = useState("")
@@ -64,6 +68,20 @@ export default function ProfilePage() {
             setBirthDate(meta.birth_date || "")
             setAddresses(meta.addresses || [])
             setAvatarUrl(meta.custom_avatar || meta.avatar_url || "")
+            
+            // Fetch Orders
+            async function fetchUserOrders() {
+                const supabase = createClient()
+                // Fetch orders based on name or user_id if it exists. 
+                // We fetch all and filter client-side just in case, or try matching customer_name.
+                const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false })
+                if (data) {
+                    const myOrders = data.filter(o => o.customer_name === meta.full_name || o.customer_name === meta.username || o.user_id === session.user.id)
+                    setUserOrders(myOrders)
+                }
+                setLoadingOrders(false)
+            }
+            fetchUserOrders()
         }
     }, [session])
 
@@ -332,28 +350,140 @@ export default function ProfilePage() {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '12px' }}>
+                    {/* SECTION: OVERVIEW */}
                     <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, color: 'var(--primary)', marginBottom: '12px', fontSize: '1.05rem' }}>
-                            <i className="fas fa-user" style={{ width: '24px', textAlign: 'center' }}></i> Akun Saya
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '32px', fontSize: '0.95rem' }}>
-                            <div style={{ color: activeTab === 'profil' ? 'var(--primary)' : 'var(--muted)', fontWeight: activeTab === 'profil' ? 700 : 500, cursor: 'pointer', padding: '8px 0', transition: 'all 0.2s' }} onClick={() => setActiveTab('profil')}>Profil</div>
-                            <div style={{ color: activeTab === 'alamat' ? 'var(--primary)' : 'var(--muted)', fontWeight: activeTab === 'alamat' ? 700 : 500, cursor: 'pointer', padding: '8px 0', transition: 'all 0.2s' }} onClick={() => setActiveTab('alamat')}>Alamat</div>
-                            <div style={{ color: activeTab === 'password' ? 'var(--primary)' : 'var(--muted)', fontWeight: activeTab === 'password' ? 700 : 500, cursor: 'pointer', padding: '8px 0', transition: 'all 0.2s' }} onClick={() => setActiveTab('password')}>Ubah Password</div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', paddingLeft: '12px' }}>Overview</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'dashboard' ? '#ecfdf5' : 'transparent', color: activeTab === 'dashboard' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'dashboard' ? 800 : 600 }} onClick={() => setActiveTab('dashboard')}>
+                                <i className="fas fa-home" style={{ width: '20px', textAlign: 'center', fontSize: '1.1rem' }}></i> Dashboard
+                            </div>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: activeTab === 'riwayat' ? 800 : 600, color: activeTab === 'riwayat' ? 'var(--primary)' : '#475569', cursor: 'pointer', padding: '8px 0', fontSize: '1.05rem', transition: 'all 0.2s' }} onClick={() => setActiveTab('riwayat')}>
-                        <i className="fas fa-clipboard-list" style={{ width: '24px', color: '#3b82f6', textAlign: 'center' }}></i> Riwayat Pesanan
+
+                    {/* SECTION: TRANSAKSI */}
+                    <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', paddingLeft: '12px' }}>Transaksi</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'riwayat' ? '#ecfdf5' : 'transparent', color: activeTab === 'riwayat' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'riwayat' ? 800 : 600 }} onClick={() => setActiveTab('riwayat')}>
+                                <i className="fas fa-clipboard-list" style={{ width: '20px', textAlign: 'center', fontSize: '1.1rem' }}></i> Riwayat Pesanan
+                            </div>
+                            <Link href="/keranjang" style={{ textDecoration: 'none' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: 'transparent', color: 'var(--dark)', fontWeight: 600 }}>
+                                    <i className="fas fa-shopping-cart" style={{ width: '20px', textAlign: 'center', fontSize: '1.1rem' }}></i> Ke Keranjang
+                                </div>
+                            </Link>
+                        </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: activeTab === 'notifikasi' ? 800 : 600, color: activeTab === 'notifikasi' ? 'var(--primary)' : '#475569', cursor: 'pointer', padding: '8px 0', fontSize: '1.05rem', transition: 'all 0.2s' }} onClick={() => setActiveTab('notifikasi')}>
-                        <i className="fas fa-bell" style={{ width: '24px', color: '#f59e0b', textAlign: 'center' }}></i> Notifikasi
+
+                    {/* SECTION: AKUN SAYA */}
+                    <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', paddingLeft: '12px' }}>Akun Saya</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'profil' ? '#ecfdf5' : 'transparent', color: activeTab === 'profil' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'profil' ? 800 : 600 }} onClick={() => setActiveTab('profil')}>
+                                <i className="fas fa-user-edit" style={{ width: '20px', textAlign: 'center', fontSize: '1.1rem' }}></i> Pengaturan Profil
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'alamat' ? '#ecfdf5' : 'transparent', color: activeTab === 'alamat' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'alamat' ? 800 : 600 }} onClick={() => setActiveTab('alamat')}>
+                                <i className="fas fa-map-marked-alt" style={{ width: '20px', textAlign: 'center', fontSize: '1.1rem' }}></i> Buku Alamat
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'password' ? '#ecfdf5' : 'transparent', color: activeTab === 'password' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'password' ? 800 : 600 }} onClick={() => setActiveTab('password')}>
+                                <i className="fas fa-key" style={{ width: '20px', textAlign: 'center', fontSize: '1.1rem' }}></i> Ubah Password
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* SECTION: KOMUNIKASI */}
+                    <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', paddingLeft: '12px' }}>Komunikasi</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'notifikasi' ? '#ecfdf5' : 'transparent', color: activeTab === 'notifikasi' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'notifikasi' ? 800 : 600 }} onClick={() => setActiveTab('notifikasi')}>
+                                <i className="fas fa-bell" style={{ width: '20px', textAlign: 'center', fontSize: '1.1rem' }}></i> Notifikasi
+                            </div>
+                        </div>
                     </div>
                 </div>
             </aside>
 
             {/* MAIN CONTENT */}
-            <div className="card" style={{ flex: 1, padding: '40px', borderRadius: '12px', background: '#ffffff', boxShadow: '0 8px 24px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {activeTab === 'dashboard' && (
+                    <>
+                        <div className="card" style={{ padding: '32px', borderRadius: '16px', background: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '20px' }}>
+                            <img src={avatarUrl || "/people.png"} alt="Avatar" onError={(e) => { e.target.onerror = null; e.target.src = "/people.png"; }} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border)' }} />
+                            <div>
+                                <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--dark)', margin: '0 0 4px 0' }}>Halo, {fullName || username || 'User'}!</h1>
+                                <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.95rem' }}>Selamat datang di Dashboard Pengguna Anda.</p>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+                            <div className="card" style={{ padding: '24px', borderRadius: '16px', background: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                    <div style={{ width: '56px', height: '56px', borderRadius: '12px', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
+                                        <i className="fas fa-shopping-bag"></i>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: '0.9rem', color: 'var(--muted)', fontWeight: 600 }}>Total Pesanan</div>
+                                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--dark)' }}>{loadingOrders ? '...' : userOrders.length}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="card" style={{ padding: '24px', borderRadius: '16px', background: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                    <div style={{ width: '56px', height: '56px', borderRadius: '12px', background: '#fef3c7', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
+                                        <i className="fas fa-clock"></i>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: '0.9rem', color: 'var(--muted)', fontWeight: 600 }}>Menunggu</div>
+                                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--dark)' }}>{loadingOrders ? '...' : userOrders.filter(o => o.status === 'Menunggu' || o.status === 'Menunggu Pembayaran').length}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="card" style={{ padding: '24px', borderRadius: '16px', background: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                    <div style={{ width: '56px', height: '56px', borderRadius: '12px', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
+                                        <i className="fas fa-check-circle"></i>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: '0.9rem', color: 'var(--muted)', fontWeight: 600 }}>Selesai</div>
+                                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--dark)' }}>{loadingOrders ? '...' : userOrders.filter(o => o.status === 'Selesai').length}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card" style={{ padding: '24px', borderRadius: '16px', background: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--dark)' }}>Pesanan Terbaru</h3>
+                                <div style={{ color: 'var(--primary)', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer' }} onClick={() => setActiveTab('riwayat')}>Lihat Semua</div>
+                            </div>
+                            {loadingOrders ? (
+                                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--muted)' }}>Memuat pesanan...</div>
+                            ) : userOrders.length === 0 ? (
+                                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--muted)' }}>Belum ada pesanan terbaru.</div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {userOrders.slice(0, 3).map(order => (
+                                        <div key={order.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', border: '1px solid #f1f5f9', borderRadius: '12px' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 800, color: 'var(--dark)' }}>Order #{order.id?.substring(0, 8) || order.id}</div>
+                                                <div style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>{new Date(order.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{ fontWeight: 800, color: 'var(--primary)' }}>Rp {Number(order.total_amount).toLocaleString('id-ID')}</div>
+                                                <div style={{ fontSize: '0.8rem', fontWeight: 700, padding: '4px 8px', borderRadius: '4px', display: 'inline-block', marginTop: '4px', background: order.status === 'Selesai' ? '#ecfdf5' : order.status === 'Menunggu' ? '#fef3c7' : '#eff6ff', color: order.status === 'Selesai' ? '#10b981' : order.status === 'Menunggu' ? '#f59e0b' : '#3b82f6' }}>{order.status}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </>
+                )}
+
+            <div className="card" style={{ padding: '40px', borderRadius: '16px', background: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9', display: activeTab === 'dashboard' ? 'none' : 'block' }}>
                 {activeTab === 'profil' && (
                     <>
                         <div style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: '20px', marginBottom: '32px' }}>
@@ -532,7 +662,7 @@ export default function ProfilePage() {
                         </div>
                     </>
                 )}
-
+            </div>
             </div>
 
             {/* ADDRESS MODAL */}

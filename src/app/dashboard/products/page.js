@@ -409,11 +409,11 @@ export default function ProductsPage() {
                                     {formData.variants && formData.variants.length > 0 ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                             {formData.variants.map((v, i) => (
-                                                <div key={v.id} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#f8fafc', padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                                                    <input required type="text" placeholder="Nama Varian (misal: Spesial)" value={v.name} onChange={e => updateVariant(v.id, 'name', e.target.value)} style={{ flex: 1.5, padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
-                                                    <input required type="number" placeholder="Harga" value={v.price} onChange={e => updateVariant(v.id, 'price', e.target.value)} style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
-                                                    <input required type="number" placeholder="Stok" value={v.stock} onChange={e => updateVariant(v.id, 'stock', e.target.value)} style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
-                                                    <button type="button" onClick={() => removeVariant(v.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '8px' }}><i className="fas fa-trash"></i></button>
+                                                <div key={v.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 32px', gap: '8px', alignItems: 'center', background: '#f8fafc', padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                                    <input required type="text" placeholder="Nama Varian" value={v.name} onChange={e => updateVariant(v.id, 'name', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+                                                    <input required type="number" placeholder="Harga" value={v.price} onChange={e => updateVariant(v.id, 'price', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+                                                    <input required type="number" placeholder="Stok" value={v.stock} onChange={e => updateVariant(v.id, 'stock', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+                                                    <button type="button" onClick={() => removeVariant(v.id)} style={{ width: '100%', background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '8px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="fas fa-trash"></i></button>
                                                 </div>
                                             ))}
                                             <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}><i className="fas fa-info-circle"></i> Jika ada varian, harga jual produk akan diambil dari harga terendah, dan stok akan diakumulasi.</div>
@@ -432,10 +432,10 @@ export default function ProductsPage() {
                                     {formData.specifications && formData.specifications.length > 0 ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                             {formData.specifications.map((s, i) => (
-                                                <div key={s.id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                    <input required type="text" placeholder="Key (misal: Kondisi)" value={s.key} onChange={e => updateSpec(s.id, 'key', e.target.value)} style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
-                                                    <input required type="text" placeholder="Value (misal: Baru)" value={s.value} onChange={e => updateSpec(s.id, 'value', e.target.value)} style={{ flex: 2, padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
-                                                    <button type="button" onClick={() => removeSpec(s.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '8px' }}><i className="fas fa-trash"></i></button>
+                                                <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 32px', gap: '8px', alignItems: 'center' }}>
+                                                    <input required type="text" placeholder="Key (misal: Kondisi)" value={s.key} onChange={e => updateSpec(s.id, 'key', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+                                                    <input required type="text" placeholder="Value (misal: Baru)" value={s.value} onChange={e => updateSpec(s.id, 'value', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+                                                    <button type="button" onClick={() => removeSpec(s.id)} style={{ width: '100%', background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '8px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="fas fa-trash"></i></button>
                                                 </div>
                                             ))}
                                         </div>

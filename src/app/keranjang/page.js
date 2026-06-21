@@ -3,23 +3,24 @@ import { useStore, useUIStore } from "@/lib/store"
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-
 import { createClient } from "@/lib/supabaseClient"
+import Loading from "@/app/loading"
+import ProductCard from "@/components/ProductCard"
 
-export default function CheckoutPage() {
+export default function KeranjangPage() {
     const router = useRouter()
-    const { cart, removeFromCart, updateCartQty, clearCart } = useStore()
+    const { cart, removeFromCart, updateCartQty, setSelectedForCheckout, wishlist, toggleWishlist, appliedVoucher, setAppliedVoucher, clearAppliedVoucher } = useStore()
     const showToast = useUIStore((state) => state.showToast)
     const supabase = createClient()
 
-    const [paymentMethod, setPaymentMethod] = useState("")
-    const [courier, setCourier] = useState("Ambil Sendiri")
-    const [voucher, setVoucher] = useState("")
-    const [buyerName, setBuyerName] = useState("")
-    const [isProcessing, setIsProcessing] = useState(false)
+    const [promoInput, setPromoInput] = useState('')
+    const [promoLoading, setPromoLoading] = useState(false)
 
     const [products, setProducts] = useState([])
     const [loadingProducts, setLoadingProducts] = useState(true)
+    
+    // UI State for checkboxes
+    const [selectedItems, setSelectedItems] = useState([])
 
     useEffect(() => {
         async function fetchProducts() {
@@ -31,300 +32,277 @@ export default function CheckoutPage() {
     }, [])
 
     const enrichedCart = cart.map(item => {
-        const product = products.find(p => p.id === item.productId)
+        const product = products.find(p => p.id === (item.productId || item.id));
         const isVariant = !!item.variant
         return {
             ...item,
-            id: item.uniqueId || item.productId, // Use uniqueId for cart operations
-            productId: item.productId, // keep original reference
-            name: product ? (isVariant ? `${product.name} - ${item.variant.name}` : product.name) : 'Produk Tidak Ditemukan',
+            id: item.uniqueId || item.productId || item.id,
+            productId: item.productId || item.id,
+            name: product ? product.name : 'Produk Tidak Ditemukan',
+            variantName: isVariant ? item.variant.name : null,
             price: product ? (isVariant ? Number(item.variant.price) : product.price) : 0,
             image_url: product ? product.image_url : null,
-            max_stock: product ? (isVariant ? Number(item.variant.stock) : Number(product.stock)) : 0
+            max_stock: product ? (isVariant ? Number(item.variant.stock) : Number(product.stock)) : 0,
+            category: product ? product.category : '',
+            description: product ? product.description : '',
+            isAvailable: !!product
         }
-    }).filter(item => item.price > 0) // only show valid items
+    })
 
-    const cartItemCount = enrichedCart.reduce((sum, item) => sum + item.qty, 0)
+    const allValidItems = enrichedCart.filter(i => i.qty <= i.max_stock)
+    
+    // Automatically deselect items that are removed or invalid
+    useEffect(() => {
+        if (!loadingProducts) {
+            setSelectedItems(prev => prev.filter(id => allValidItems.some(item => item.id === id)))
+        }
+    }, [cart, loadingProducts])
 
-    // Calculate Totals
-    const subtotal = enrichedCart.reduce((sum, item) => sum + (item.price * item.qty), 0)
-    const tax = subtotal * 0.10
-
-    let adminFee = 0
-    if (paymentMethod === "QRIS") adminFee = 2500
-    if (paymentMethod === "Debit") adminFee = 4000
-
-    let shippingFee = 0 // simplified for now, need map logic later
-    let discount = 0
-    if (voucher.toUpperCase() === "HEMAT10") {
-        discount = subtotal * 0.10
+    const handleSelectAll = () => {
+        if (selectedItems.length === allValidItems.length) {
+            setSelectedItems([])
+        } else {
+            setSelectedItems(allValidItems.map(i => i.id))
+        }
     }
 
-    const total = subtotal + tax + shippingFee + adminFee - discount
+    const toggleSelectItem = (id) => {
+        setSelectedItems(prev => 
+            prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
+        )
+    }
 
-    const handleCheckout = async () => {
-        if (!buyerName) {
-            showToast("Nama penerima belum diisi!", "error")
+    const handleRemoveSelected = () => {
+        if (selectedItems.length === 0) return;
+        if (confirm(`Hapus ${selectedItems.length} produk dari keranjang?`)) {
+            selectedItems.forEach(id => removeFromCart(id))
+            setSelectedItems([])
+            showToast("Produk berhasil dihapus.", "success")
+        }
+    }
+
+    const selectedCartItems = enrichedCart.filter(item => selectedItems.includes(item.id))
+    const totalItems = selectedCartItems.reduce((sum, item) => sum + item.qty, 0)
+    const totalPrice = selectedCartItems.reduce((sum, item) => sum + (item.price * item.qty), 0)
+
+    const proceedToCheckout = () => {
+        if (selectedItems.length === 0) {
+            showToast("Pilih minimal 1 produk untuk dibeli!", "error")
             return
         }
-        if (Object.keys(cart).length === 0) {
-            showToast("Keranjang belanja masih kosong!", "error")
-            return
-        }
+        setSelectedForCheckout(selectedItems)
+        router.push('/checkout')
+    }
 
-        setIsProcessing(true)
-
-        // Cek ketersediaan stok terlebih dahulu (Mencegah "penimbun" telat bayar)
-        const outOfStockItems = enrichedCart.filter(item => {
-            const currentStock = products.find(p => p.id === item.id)?.stock || 0
-            return currentStock < item.qty
-        })
-
-        if (outOfStockItems.length > 0) {
-            const itemNames = outOfStockItems.map(i => i.name).join(", ")
-            showToast(`Maaf, stok tidak cukup untuk: ${itemNames}. Orang lain mungkin telah membelinya.`, "error")
-            setIsProcessing(false)
-            return
-        }
+    const handleApplyPromo = async () => {
+        if (!promoInput.trim()) return;
+        setPromoLoading(true);
         
-        // Simpan ke Supabase tabel orders
-        const orderPayload = {
-            customer_name: buyerName,
-            total_amount: total,
-            status: 'Menunggu'
-        }
-
-        const { data, error } = await supabase.from('orders').insert([orderPayload]).select()
-
-        if (error) {
-            console.error("Supabase Insert Error:", error)
-            showToast("Gagal membuat pesanan, silakan coba lagi.", "error")
-            setIsProcessing(false)
-            return
-        }
-
-        // Mengurangi stok produk di database
-        const stockUpdates = enrichedCart.map(item => {
-            const product = products.find(p => p.id === item.productId)
-            if (!product) return null
+        try {
+            const { data, error } = await supabase.from('vouchers').select('*').eq('code', promoInput.toUpperCase()).single();
             
-            if (item.variant) {
-                // Kurangi stok varian, lalu kurangi stok total produk juga
-                const updatedVariants = product.variants.map(v => 
-                    v.id === item.variant.id ? { ...v, stock: Math.max(0, v.stock - item.qty) } : v
-                )
-                const newTotalStock = Math.max(0, product.stock - item.qty)
-                return supabase.from('products').update({ stock: newTotalStock, variants: updatedVariants }).eq('id', product.id)
-            } else {
-                const newStock = Math.max(0, product.stock - item.qty)
-                return supabase.from('products').update({ stock: newStock }).eq('id', product.id)
+            if (error || !data) {
+                showToast("Kode promo tidak valid atau tidak ditemukan!", "error");
+                setPromoLoading(false);
+                return;
             }
-        }).filter(Boolean)
 
-        await Promise.all(stockUpdates)
+            // Validasi min purchase
+            if (data.min_purchase && totalPrice < data.min_purchase) {
+                showToast(`Minimal belanja Rp ${data.min_purchase.toLocaleString('id-ID')} untuk menggunakan promo ini!`, "error");
+                setPromoLoading(false);
+                return;
+            }
 
-        // Insert Notifikasi
-        await supabase.from('notifications').insert([{
-            title: `Pesanan Baru`,
-            message: `Anda menerima pesanan baru dari ${buyerName} senilai Rp ${total.toLocaleString('id-ID')}.`,
-            type: 'Order',
-            unread: true
-        }])
+            // Validasi kuota
+            if (data.quota && data.used_count >= data.quota) {
+                showToast("Kuota promo ini sudah habis!", "error");
+                setPromoLoading(false);
+                return;
+            }
 
-        setIsProcessing(false)
-
-        showToast("Pesanan berhasil dibuat! Silakan tunggu konfirmasi admin.", "success")
-        clearCart()
-        router.push('/dashboard/orders') // Mengarahkan sementara ke dashboard orders agar user/admin bisa lihat pesanan yang baru masuk
+            setAppliedVoucher(data);
+            setPromoInput('');
+            showToast("Promo berhasil digunakan!", "success");
+        } catch (err) {
+            showToast("Terjadi kesalahan saat memverifikasi promo.", "error");
+        }
+        setPromoLoading(false);
     }
+
+    if (loadingProducts) return <Loading />
 
     return (
-        <main className="contentArea" id="mainContent">
-            <div className="card sectionPad">
-                <div className="titleRow">
-                    <div>
-                        <h3 className="h1">Keranjang - Buat Manifest Transaksi</h3>
-                        <div className="p">Atur data pembeli, kurir, pembayaran, voucher, dan checkout. Setelah selesai,
-                            lihat status di tab Invoice.</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                        <Link href="/">
-                            <button className="btn btnOutline">
-                                <i className="fas fa-plus"></i> Tambah Produk
-                            </button>
-                        </Link>
-                        <button className="btn btnDanger" onClick={clearCart}>
-                            <i className="fas fa-trash"></i> Kosongkan Keranjang
-                        </button>
-                    </div>
+        <div style={{ background: '#f8fafc', minHeight: '100vh', padding: '40px 0' }}>
+            <main className="contentArea" id="mainContent" style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 20px' }}>
+                <h1 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '24px', color: 'var(--dark)' }}>Keranjang</h1>
+            
+            {enrichedCart.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: '16px', border: '1px solid #f1f5f9', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+                    <img src="https://cdn-icons-png.flaticon.com/512/11329/11329060.png" style={{ width: '120px', marginBottom: '20px', opacity: 0.8 }} />
+                    <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--dark)' }}>Wah, keranjang belanjamu kosong</h2>
+                    <p style={{ color: 'var(--muted)', marginTop: '8px', marginBottom: '24px' }}>Yuk, isi dengan sembako dan kebutuhan harianmu sekarang!</p>
+                    <Link href="/">
+                        <button className="btn btnPrimary" style={{ padding: '12px 32px', borderRadius: '8px', fontWeight: 800 }}>Mulai Belanja</button>
+                    </Link>
                 </div>
-
-                <div className="grid2" style={{ marginTop: '14px' }}>
-                    {/* KIRI: FORM */}
-                    <div className="card sectionPad" style={{ borderRadius: '18px' }}>
-                        <h3 className="h1" style={{ fontSize: '1.05rem', marginBottom: '6px' }}>Form Manifest</h3>
-                        <div className="formGrid" style={{ gap: '16px', marginTop: '12px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <div className="label" style={{ marginTop: 0 }}>Nama Konsumen / Penerima</div>
-                                <input
-                                    className="input"
-                                    id="buyerName"
-                                    placeholder="Nama penerima..."
-                                    value={buyerName}
-                                    onChange={(e) => setBuyerName(e.target.value)}
+            ) : (
+                <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+                    
+                    {/* KIRI: DAFTAR PRODUK */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        
+                        {/* HEADER TABEL */}
+                        <div style={{ background: '#fff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #f1f5f9', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
+                            <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>
+                                <input 
+                                    type="checkbox" 
+                                    style={{ width: '16px', height: '16px', accentColor: '#10b981', cursor: 'pointer' }} 
+                                    checked={selectedItems.length > 0 && selectedItems.length === allValidItems.length}
+                                    onChange={handleSelectAll}
                                 />
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <div className="label" style={{ marginTop: 0 }}>Metode Pembayaran</div>
-                                <select
-                                    className="select"
-                                    id="paymentMethod"
-                                    value={paymentMethod}
-                                    onChange={(e) => setPaymentMethod(e.target.value)}
-                                >
-                                    <option value="" disabled>Pilih kanal pembayaran...</option>
-                                    <option value="COD">COD (Bayar di tempat)</option>
-                                    <option value="QRIS">QRIS (biaya admin)</option>
-                                    <option value="Debit">Transfer Debit (biaya admin)</option>
-                                </select>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <div className="label" style={{ marginTop: 0 }}>Pilihan Kurir</div>
-                                <select
-                                    className="select"
-                                    id="courierSelect"
-                                    value={courier}
-                                    onChange={(e) => setCourier(e.target.value)}
-                                >
-                                    <option value="Ambil Sendiri">Ambil Sendiri (tanpa ongkir)</option>
-                                    <option value="JNE Reguler">JNE Reguler (Rp 3.000/km)</option>
-                                    <option value="J&T Express">J&T Express (Rp 4.000/km)</option>
-                                    <option value="GrabExpress">GrabExpress SameDay (Rp 6.000/km)</option>
-                                    <option value="GoSend">GoSend Premium Instant (Rp 8.000/km)</option>
-                                </select>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <div className="label" style={{ marginTop: 0 }}>Voucher (opsional)</div>
-                                <input
-                                    className="input"
-                                    id="voucherInput"
-                                    placeholder="Contoh: HEMAT10"
-                                    value={voucher}
-                                    onChange={(e) => setVoucher(e.target.value)}
-                                />
-                            </div>
+                            <div style={{ flex: 2 }}>Produk</div>
+                            <div style={{ flex: 1, textAlign: 'center' }}>Harga Satuan</div>
+                            <div style={{ flex: 1, textAlign: 'center' }}>Kuantitas</div>
+                            <div style={{ flex: 1, textAlign: 'center' }}>Total Harga</div>
+                            <div style={{ width: '60px', textAlign: 'center' }}>Aksi</div>
                         </div>
 
-                        {courier !== "Ambil Sendiri" && (
-                            <div id="mapArea" style={{ marginTop: '12px' }}>
-                                <div className="label">Alamat lengkap</div>
-                                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                    <input className="input" id="alamatLengkap" style={{ flex: 1 }} placeholder="Masukkan alamat/jalan/kota..." />
-                                    <button className="btn btnPrimary" onClick={() => showToast("Integrasi Leaflet Map belum aktif!", "info")}>
-                                        <i className="fas fa-search-location"></i> Cari
-                                    </button>
-                                </div>
-                                <div className="mapBox" id="mapBox" style={{ marginTop: '10px', background: '#e5e7eb', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    [ Peta akan muncul di sini ]
-                                </div>
-                                <div style={{ marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                    <span className="badge" id="shipLive"><i className="fas fa-route"></i> Jarak: 0 km | Ongkir: Rp 0</span>
-                                    <span className="p" style={{ margin: 0 }}>Klik peta untuk set titik rumah. Marker bisa digeser.</span>
-                                </div>
-                                <div className="label" style={{ marginTop: '10px' }}>Catatan patokan (opsional)</div>
-                                <input className="input" id="houseBenchmark" placeholder="Contoh: pagar hitam depan mushola" />
-                            </div>
-                        )}
-                    </div>
+                        {/* LIST ITEMS */}
+                        <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #f1f5f9', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
+                            {enrichedCart.map((item, index) => {
+                                const isInvalid = !item.isAvailable || item.qty > item.max_stock;
+                                const isSelected = selectedItems.includes(item.id);
+                                const isWishlisted = wishlist.includes(item.productId);
 
-                    {/* KANAN: KERANJANG & RINGKASAN */}
-                    <div className="card sectionPad" style={{ borderRadius: '18px' }}>
-                        <div className="titleRow">
-                            <div>
-                                <h3 className="h1" style={{ fontSize: '1.05rem', margin: 0 }}>Keranjang</h3>
-                                <div className="p" style={{ margin: '6px 0 0' }}>Atur qty &amp; hapus item di sini.</div>
-                            </div>
-                            <span className="badge"><i className="fas fa-box"></i> Item: <span>{cartItemCount}</span></span>
-                        </div>
-
-                        <div className="cartList" id="cartList" style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {enrichedCart.length === 0 ? (
-                                <div className="p" style={{ textAlign: 'center', padding: '40px 0', background: '#f8fafc', borderRadius: '12px', border: '1px dashed var(--border)' }}>
-                                    <i className="fas fa-shopping-basket" style={{ fontSize: '2rem', color: 'var(--border)', marginBottom: '10px' }}></i>
-                                    <div style={{ fontWeight: 700 }}>Keranjang masih kosong</div>
-                                    <div style={{ fontSize: '0.8rem', marginTop: '4px' }}>Yuk, tambah produk dari Etalase!</div>
-                                </div>
-                            ) : loadingProducts ? (
-                                <div className="p" style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)' }}>Memuat data produk...</div>
-                            ) : (
-                                enrichedCart.map(item => {
-                                    const isInvalid = item.qty > item.max_stock;
-                                    return (
-                                        <div key={item.id} style={{ display: 'flex', gap: '12px', padding: '12px', background: isInvalid ? '#f1f5f9' : '#f8fafc', borderRadius: '12px', border: `1px solid ${isInvalid ? '#ef4444' : 'var(--border)'}`, alignItems: 'center', opacity: isInvalid ? 0.7 : 1 }}>
-                                            <div style={{ width: '48px', height: '48px', borderRadius: '8px', overflow: 'hidden', background: '#fff', border: '1px solid var(--border)' }}>
-                                                <img src={item.image_url || 'https://cdn-icons-png.flaticon.com/512/3081/3081840.png'} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: isInvalid ? 'grayscale(100%)' : 'none' }} />
-                                            </div>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ fontWeight: 900, fontSize: '0.95rem', color: isInvalid ? '#94a3b8' : 'inherit' }}>{item.name}</div>
-                                                <div style={{ color: isInvalid ? '#94a3b8' : 'var(--secondary)', fontWeight: 800, marginTop: '4px' }}>Rp {item.price.toLocaleString('id-ID')}</div>
-                                                {isInvalid && <div style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, marginTop: '4px' }}>Stok hanya sisa {item.max_stock}</div>}
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', padding: '4px', borderRadius: '14px', border: '1px solid var(--border)' }}>
-                                                <button className="qtyMiniBtn" style={{ border: 'none', background: '#f1f5f9' }} onClick={() => updateCartQty(item.id, item.qty - 1)}>-</button>
-                                                <span style={{ fontWeight: 900, width: '28px', textAlign: 'center' }}>{item.qty}</span>
-                                                <button className="qtyMiniBtn" style={{ border: 'none', background: '#f1f5f9', opacity: isInvalid ? 0.5 : 1 }} onClick={() => updateCartQty(item.id, item.qty + 1)} disabled={item.qty >= item.max_stock}>+</button>
-                                            </div>
-                                            <button className="btn btnDanger" style={{ padding: '8px 12px', borderRadius: '12px' }} onClick={() => removeFromCart(item.id)}>
-                                                <i className="fas fa-trash"></i>
-                                            </button>
+                                return (
+                                    <div key={item.id} style={{ padding: '16px', borderBottom: index < enrichedCart.length - 1 ? '1px solid #f1f5f9' : 'none', opacity: isInvalid ? 0.6 : 1, display: 'flex', alignItems: 'center', fontSize: '0.85rem' }}>
+                                        {/* CHECKBOX */}
+                                        <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                style={{ width: '16px', height: '16px', accentColor: '#10b981', cursor: 'pointer' }}
+                                                checked={isSelected}
+                                                onChange={() => toggleSelectItem(item.id)}
+                                                disabled={isInvalid}
+                                            />
                                         </div>
-                                    )
-                                })
-                            )}
+
+                                        {/* PRODUK (Image + Info) */}
+                                        <div style={{ flex: 2, display: 'flex', gap: '12px', alignItems: 'flex-start', paddingRight: '12px' }}>
+                                            <img src={item.image_url || 'https://cdn-icons-png.flaticon.com/512/3081/3081840.png'} style={{ width: '60px', height: '60px', borderRadius: '6px', objectFit: 'cover', border: '1px solid #f1f5f9' }} />
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                <div style={{ fontWeight: 600, color: 'var(--dark)', lineHeight: '1.3', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                    {item.name}
+                                                </div>
+                                                {!item.isAvailable && <div style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 700 }}>Produk sudah dihapus toko</div>}
+                                                {item.variantName && <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Variasi: {item.variantName}</div>}
+                                                {item.category && <div style={{ color: '#10b981', fontSize: '0.7rem', fontWeight: 700 }}>{item.category}</div>}
+                                                {item.isAvailable && item.qty > item.max_stock && <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 700 }}>Sisa stok: {item.max_stock}</div>}
+                                            </div>
+                                        </div>
+
+                                        {/* HARGA SATUAN */}
+                                        <div style={{ flex: 1, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+                                            Rp{item.price.toLocaleString('id-ID')}
+                                        </div>
+
+                                        {/* KUANTITAS */}
+                                        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', opacity: item.isAvailable ? 1 : 0.5 }}>
+                                                <button style={{ border: 'none', borderRight: '1px solid #cbd5e1', background: '#f8fafc', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: item.qty <= 1 || !item.isAvailable ? '#cbd5e1' : '#64748b', fontWeight: 800 }} onClick={() => updateCartQty(item.id, item.qty - 1)} disabled={item.qty <= 1 || !item.isAvailable}>-</button>
+                                                <div style={{ width: '36px', textAlign: 'center', fontSize: '0.85rem', fontWeight: 600, color: 'var(--dark)' }}>{item.qty}</div>
+                                                <button style={{ border: 'none', borderLeft: '1px solid #cbd5e1', background: '#f8fafc', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: isInvalid || item.qty >= item.max_stock || !item.isAvailable ? '#cbd5e1' : '#64748b', fontWeight: 800 }} onClick={() => updateCartQty(item.id, item.qty + 1)} disabled={item.qty >= item.max_stock || !item.isAvailable}>+</button>
+                                            </div>
+                                        </div>
+
+                                        {/* TOTAL HARGA */}
+                                        <div style={{ flex: 1, textAlign: 'center', color: '#ef4444', fontWeight: 700 }}>
+                                            Rp{(item.price * item.qty).toLocaleString('id-ID')}
+                                        </div>
+
+                                        {/* AKSI */}
+                                        <div style={{ width: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                            <div style={{ color: 'var(--dark)', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem', transition: 'color 0.2s' }} onClick={() => removeFromCart(item.id)}>Hapus</div>
+                                            <div style={{ color: '#f97316', cursor: 'pointer', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                Serupa <i className="fas fa-caret-down"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
                         </div>
 
-                        {Object.keys(cart).length > 0 && (
-                            <div className="summary" id="summaryBox" style={{ marginTop: '16px' }}>
-                                <div className="sumRow muted" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>Subtotal</span><span>Rp {subtotal.toLocaleString('id-ID')}</span>
-                                </div>
-                                <div className="sumRow muted" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>PPN 10%</span><span>Rp {tax.toLocaleString('id-ID')}</span>
-                                </div>
-                                {shippingFee > 0 && (
-                                    <div className="sumRow muted" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span>Ongkir</span><span>Rp {shippingFee.toLocaleString('id-ID')}</span>
-                                    </div>
-                                )}
-                                {adminFee > 0 && (
-                                    <div className="sumRow muted" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span>Biaya Admin</span><span>Rp {adminFee.toLocaleString('id-ID')}</span>
-                                    </div>
-                                )}
-                                {discount > 0 && (
-                                    <div className="sumRow" style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--primary)', fontWeight: 800 }}>
-                                        <span>Potongan Voucher</span><span>- Rp {discount.toLocaleString('id-ID')}</span>
-                                    </div>
-                                )}
-                                <div className="sumRow sumTotal" style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px dashed var(--border)', paddingTop: '10px', marginTop: '10px', fontSize: '1.1rem', fontWeight: 900 }}>
-                                    <span>Total</span><span>Rp {total.toLocaleString('id-ID')}</span>
+                        {/* REKOMENDASI PRODUK */}
+                        {!loadingProducts && products.length > 0 && (
+                            <div style={{ marginTop: '40px' }}>
+                                <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--dark)', marginBottom: '16px' }}>Rekomendasi untukmu</h2>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                                    {products.filter(p => !cart.some(c => c.productId === p.id)).slice(0, 8).map(product => (
+                                        <ProductCard key={product.id} product={product} />
+                                    ))}
                                 </div>
                             </div>
                         )}
-
-                        <button
-                            className="btn btnPrimary"
-                            id="btnCheckout"
-                            style={{ marginTop: '12px', width: '100%', justifyContent: 'center' }}
-                            onClick={handleCheckout}
-                            disabled={Object.keys(cart).length === 0 || isProcessing}
-                        >
-                            <i className={isProcessing ? "fas fa-spinner fa-spin" : "fas fa-credit-card"}></i> 
-                            {isProcessing ? " Memproses..." : " Selesaikan Manifest Transaksi"}
-                        </button>
                     </div>
+
+                    {/* KANAN: RINGKASAN */}
+                    <div style={{ width: '350px', flexShrink: 0, position: 'sticky', top: '100px' }}>
+                        <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #f1f5f9', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', padding: '20px' }}>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--dark)', margin: '0 0 20px 0' }}>Ringkasan belanja</h3>
+                            
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                <span style={{ color: 'var(--muted)', fontSize: '0.95rem' }}>Total Harga ({totalItems} barang)</span>
+                                <span style={{ fontWeight: 800, color: 'var(--dark)', fontSize: '1.1rem' }}>Rp {totalPrice.toLocaleString('id-ID')}</span>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--dark)' }}>Makin hemat pakai promo</div>
+                                
+                                {appliedVoucher ? (
+                                    <div style={{ background: '#ecfdf5', border: '1px solid #10b981', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div>
+                                            <div style={{ fontWeight: 800, color: '#10b981', fontSize: '0.9rem' }}>{appliedVoucher.code}</div>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: '2px' }}>
+                                                Diskon {appliedVoucher.discount_type === 'percent' ? `${appliedVoucher.discount_amount}%` : `Rp ${appliedVoucher.discount_amount.toLocaleString('id-ID')}`}
+                                            </div>
+                                        </div>
+                                        <button onClick={clearAppliedVoucher} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem' }}>Hapus</button>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', background: '#fff' }}>
+                                        <input 
+                                            placeholder="Masukkan kode promo" 
+                                            value={promoInput}
+                                            onChange={e => setPromoInput(e.target.value)}
+                                            style={{ border: 'none', outline: 'none', background: 'transparent', flex: 1, padding: '12px 16px', fontSize: '0.85rem', color: 'var(--dark)' }} 
+                                        />
+                                        <button 
+                                            onClick={handleApplyPromo}
+                                            disabled={promoLoading || !promoInput.trim()}
+                                            style={{ border: 'none', background: promoInput.trim() ? '#10b981' : '#cbd5e1', color: '#fff', padding: '0 20px', alignSelf: 'stretch', fontWeight: 700, cursor: promoInput.trim() ? 'pointer' : 'not-allowed', fontSize: '0.9rem', transition: 'background 0.2s' }}
+                                        >
+                                            {promoLoading ? 'Cek...' : 'Gunakan'}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            <button 
+                                style={{ width: '100%', padding: '14px', borderRadius: '12px', background: selectedItems.length > 0 ? '#10b981' : '#e2e8f0', color: selectedItems.length > 0 ? '#fff' : '#94a3b8', border: 'none', fontWeight: 800, fontSize: '1rem', cursor: selectedItems.length > 0 ? 'pointer' : 'not-allowed', transition: 'all 0.2s' }}
+                                onClick={proceedToCheckout}
+                                disabled={selectedItems.length === 0}
+                            >
+                                Beli ({totalItems})
+                            </button>
+                        </div>
+                    </div>
+
                 </div>
-            </div>
-        </main>
+            )}
+
+            </main>
+        </div>
     )
 }

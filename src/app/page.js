@@ -5,10 +5,14 @@ import Link from "next/link"
 import { useStore, useUIStore } from "@/lib/store"
 import { createClient } from "@/lib/supabaseClient"
 import HeroCarousel from "@/components/HeroCarousel"
+import Loading from "@/app/loading"
 
 export default function Storefront() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [quickBuyProduct, setQuickBuyProduct] = useState(null)
+  const [quickBuyVariant, setQuickBuyVariant] = useState(null)
+  const [quickBuyQty, setQuickBuyQty] = useState(1)
   const { cart, addToCart, removeFromCart, updateCartQty, landingCategory, setLandingCategory, landingSearch, setLandingSearch, wishlist, toggleWishlist } = useStore()
   const showToast = useUIStore((state) => state.showToast)
   const router = useRouter()
@@ -143,20 +147,21 @@ export default function Storefront() {
             Stok tersedia: <b style={{color: stockTotal <= 10 && stockTotal > 0 ? 'var(--warn)' : stockTotal <= 0 ? 'var(--danger)' : '#111827'}}>{stockTotal}</b>
         </div>
         <div className="prodFooter" onClick={(e) => e.stopPropagation()}>
-            {qtyInCart <= 0 ? (
-                <button className="btn btnPrimary" onClick={(e) => { e.stopPropagation(); addToCart(p); }} disabled={stockTotal <= 0}>
-                    <i className="fas fa-cart-plus"></i> Tambah ke Keranjang
-                </button>
-            ) : (
-                <div className="qtyStepper">
-                    <button className="qtyMiniBtn" onClick={() => changeQty(p.id, -1, stockTotal)}>-</button>
-                    <div className="qtyStepperVal">{qtyInCart}</div>
-                    <button className="qtyMiniBtn" onClick={() => changeQty(p.id, 1, stockTotal)} disabled={qtyInCart >= stockTotal}>+</button>
-                </div>
-            )}
+            <button className="btn btnPrimary" onClick={(e) => { 
+                e.stopPropagation(); 
+                setQuickBuyProduct(p);
+                setQuickBuyVariant(p.variants && p.variants.length > 0 ? p.variants[0] : null);
+                setQuickBuyQty(1);
+            }} disabled={stockTotal <= 0}>
+                <i className="fas fa-shopping-basket"></i> Beli Langsung
+            </button>
         </div>
       </div>
     )
+  }
+
+  if (loading) {
+    return <Loading />
   }
 
   return (
@@ -302,6 +307,82 @@ export default function Storefront() {
             </div>
         </section>
       </main>
+
+      {/* Quick Buy Modal */}
+      {quickBuyProduct && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => setQuickBuyProduct(null)}>
+            <div style={{ background: '#fff', borderRadius: '24px', padding: '24px', width: '90%', maxWidth: '420px', position: 'relative', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }} onClick={(e) => e.stopPropagation()}>
+                <button onClick={() => setQuickBuyProduct(null)} style={{ position: 'absolute', top: '16px', right: '16px', background: '#f1f5f9', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = '#e2e8f0'} onMouseOut={(e) => e.currentTarget.style.background = '#f1f5f9'}>
+                    <i className="fas fa-times"></i>
+                </button>
+                <h3 style={{ margin: '0 0 20px 0', fontSize: '1.2rem', fontWeight: 800 }}>Pilih Varian & Jumlah</h3>
+                
+                {/* Product Summary */}
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', padding: '12px', background: '#f8fafc', borderRadius: '16px' }}>
+                    <img src={quickBuyProduct.image_url || "https://cdn-icons-png.flaticon.com/512/3081/3081840.png"} alt={quickBuyProduct.name} style={{ width: '64px', height: '64px', borderRadius: '12px', objectFit: 'cover' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <div style={{ fontWeight: 800, color: 'var(--dark)', fontSize: '0.95rem', marginBottom: '4px' }}>{quickBuyProduct.name}</div>
+                        {(() => {
+                            const p = quickBuyProduct;
+                            const hasDisc = Number(p.discount || 0) > 0;
+                            const basePrice = quickBuyVariant ? Number(quickBuyVariant.price) : Number(p.price);
+                            const finalPrice = hasDisc ? Math.round(basePrice - (basePrice * (p.discount / 100))) : basePrice;
+                            return <div style={{ color: 'var(--secondary)', fontWeight: 900, fontSize: '1.1rem', marginBottom: '2px' }}>{rupiah(finalPrice)}</div>
+                        })()}
+                        <div style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600 }}>Sisa stok: <b style={{color: 'var(--dark)'}}>{quickBuyVariant ? quickBuyVariant.stock : quickBuyProduct.stock}</b></div>
+                    </div>
+                </div>
+
+                {/* Variants */}
+                {quickBuyProduct.variants && quickBuyProduct.variants.length > 0 && (
+                    <div style={{ marginBottom: '20px' }}>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '10px' }}>Pilih Varian: <span style={{ color: 'var(--muted)', fontWeight: 600 }}>{quickBuyVariant?.name}</span></div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {quickBuyProduct.variants.map((v) => {
+                                const isSelected = quickBuyVariant?.id === v.id;
+                                return (
+                                    <button key={v.id} onClick={() => { setQuickBuyVariant(v); setQuickBuyQty(1); }} style={{ padding: '8px 16px', borderRadius: '12px', border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`, background: isSelected ? '#e6f7eb' : '#fff', color: isSelected ? 'var(--primary)' : 'var(--dark)', fontWeight: isSelected ? 800 : 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'all 0.2s' }}>
+                                        {v.name}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* Quantity */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Atur Jumlah</div>
+                    <div className="qtyStepper" style={{ background: '#f8fafc', padding: '4px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                        <button className="qtyMiniBtn" style={{ background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }} onClick={() => setQuickBuyQty(Math.max(1, quickBuyQty - 1))} disabled={quickBuyQty <= 1}>-</button>
+                        <div className="qtyStepperVal" style={{ fontWeight: 800 }}>{quickBuyQty}</div>
+                        <button className="qtyMiniBtn" style={{ background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }} onClick={() => {
+                            const maxStock = quickBuyVariant ? Number(quickBuyVariant.stock) : Number(quickBuyProduct.stock);
+                            setQuickBuyQty(Math.min(maxStock, quickBuyQty + 1));
+                        }} disabled={quickBuyQty >= (quickBuyVariant ? Number(quickBuyVariant.stock) : Number(quickBuyProduct.stock))}>+</button>
+                    </div>
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button className="btn" style={{ flex: 1, padding: '12px', borderRadius: '14px', border: '2px solid var(--primary)', background: '#fff', color: 'var(--primary)', fontWeight: 800, fontSize: '0.9rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }} onClick={() => {
+                        addToCart(quickBuyProduct, quickBuyQty, quickBuyVariant);
+                        showToast("Produk dimasukkan ke keranjang!", "success");
+                        setQuickBuyProduct(null);
+                    }}>
+                        <i className="fas fa-cart-plus"></i> + Keranjang
+                    </button>
+                    <button className="btn btnPrimary" style={{ flex: 1, padding: '12px', borderRadius: '14px', fontWeight: 800, fontSize: '0.9rem', border: '2px solid var(--primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }} onClick={() => {
+                        addToCart(quickBuyProduct, quickBuyQty, quickBuyVariant);
+                        setQuickBuyProduct(null);
+                        router.push('/keranjang');
+                    }}>
+                        <i className="fas fa-shopping-basket"></i> Beli Langsung
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
     </>
   )
 }

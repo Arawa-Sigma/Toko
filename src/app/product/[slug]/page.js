@@ -4,6 +4,7 @@ import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { useStore, useUIStore } from "@/lib/store"
 import { createClient } from "@/lib/supabaseClient"
+import Loading from "@/app/loading"
 
 export default function ProductDetail() {
     const router = useRouter()
@@ -22,6 +23,7 @@ export default function ProductDetail() {
     const [qty, setQty] = useState(1)
     const [isSticky, setIsSticky] = useState(false)
     const [activeTab, setActiveTab] = useState('detail')
+    const [infoTab, setInfoTab] = useState('detail')
     const [selectedVariant, setSelectedVariant] = useState(null)
 
     const { cart, addToCart, removeFromCart, updateCartQty, wishlist, toggleWishlist } = useStore()
@@ -104,14 +106,7 @@ export default function ProductDetail() {
     }, [])
 
     if (loading) {
-        return (
-            <main className="contentArea" style={{ padding: '40px', textAlign: 'center' }}>
-                <div style={{ padding: '40px', background: '#fff', borderRadius: '12px' }}>
-                    <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', color: 'var(--primary)' }}></i>
-                    <div style={{ marginTop: '10px', color: 'var(--muted)' }}>Memuat detail produk...</div>
-                </div>
-            </main>
-        )
+        return <Loading />
     }
 
     if (!product) return null
@@ -278,21 +273,32 @@ export default function ProductDetail() {
 
                     <div style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '16px 0', marginBottom: '24px' }}>
                         <div style={{ display: 'flex', gap: '32px', color: 'var(--primary)', fontWeight: 700, fontSize: '1rem', marginBottom: '16px' }}>
-                            <div style={{ borderBottom: '3px solid var(--primary)', paddingBottom: '8px' }}>Detail Produk</div>
-                            <div style={{ color: 'var(--muted)', cursor: 'pointer', paddingBottom: '8px' }}>Spesifikasi</div>
+                            <div onClick={() => setInfoTab('detail')} style={{ borderBottom: infoTab === 'detail' ? '3px solid var(--primary)' : '3px solid transparent', color: infoTab === 'detail' ? 'var(--primary)' : 'var(--muted)', cursor: 'pointer', paddingBottom: '8px' }}>Detail Produk</div>
+                            {product.specifications && product.specifications.length > 0 && (
+                                <div onClick={() => setInfoTab('spesifikasi')} style={{ borderBottom: infoTab === 'spesifikasi' ? '3px solid var(--primary)' : '3px solid transparent', color: infoTab === 'spesifikasi' ? 'var(--primary)' : 'var(--muted)', cursor: 'pointer', paddingBottom: '8px' }}>Spesifikasi</div>
+                            )}
                         </div>
                         <div style={{ fontSize: '0.95rem', color: '#334155', lineHeight: '1.8' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', marginBottom: '20px' }}>
-                                <div style={{ color: 'var(--muted)' }}>Kategori:</div>
-                                <div style={{ color: 'var(--primary)', fontWeight: 700, cursor: 'pointer' }}>{product.category}</div>
-                                {product.specifications && product.specifications.map((s, idx) => [
-                                    <div key={`k-${idx}`} style={{ color: 'var(--muted)' }}>{s.key}:</div>,
-                                    <div key={`v-${idx}`}>{s.value}</div>
-                                ])}
-                            </div>
-                            <div style={{ whiteSpace: 'pre-wrap' }}>
-                                {product.description || "Tidak ada deskripsi untuk produk ini."}
-                            </div>
+                            {infoTab === 'detail' && (
+                                <>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', marginBottom: '20px' }}>
+                                        <div style={{ color: 'var(--muted)' }}>Kategori:</div>
+                                        <div style={{ color: 'var(--primary)', fontWeight: 700, cursor: 'pointer' }}>{product.category}</div>
+                                    </div>
+                                    <div style={{ whiteSpace: 'pre-wrap' }}>
+                                        {product.description || "Tidak ada deskripsi untuk produk ini."}
+                                    </div>
+                                </>
+                            )}
+                            
+                            {infoTab === 'spesifikasi' && (
+                                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
+                                    {product.specifications && product.specifications.map((s, idx) => [
+                                        <div key={`k-${idx}`} style={{ color: 'var(--muted)' }}>{s.key}:</div>,
+                                        <div key={`v-${idx}`}>{s.value}</div>
+                                    ])}
+                                </div>
+                            )}
                         </div>
                     </div>
 

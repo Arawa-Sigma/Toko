@@ -26,12 +26,17 @@ export const useStore = create(
         return { cart: [...state.cart, { uniqueId, productId: product.id, qty, variant }] }
       }),
       removeFromCart: (uniqueId) => set((state) => ({
-        cart: state.cart.filter(i => (i.uniqueId || i.productId) !== uniqueId)
+        cart: state.cart.filter(i => String(i.uniqueId || i.productId || i.id) !== String(uniqueId))
       })),
       updateCartQty: (uniqueId, qty) => set((state) => ({
-        cart: state.cart.map(i => (i.uniqueId || i.productId) === uniqueId ? { ...i, qty } : i)
+        cart: state.cart.map(i => String(i.uniqueId || i.productId || i.id) === String(uniqueId) ? { ...i, qty } : i)
       })),
       clearCart: () => set({ cart: [] }),
+
+      // Voucher management
+      appliedVoucher: null,
+      setAppliedVoucher: (voucher) => set({ appliedVoucher: voucher }),
+      clearAppliedVoucher: () => set({ appliedVoucher: null }),
 
       // Wishlist State
       wishlist: [],
@@ -41,6 +46,10 @@ export const useStore = create(
         }
         return { wishlist: [...state.wishlist, productId] }
       }),
+
+      // Checkout State
+      selectedForCheckout: [],
+      setSelectedForCheckout: (items) => set({ selectedForCheckout: items }),
     }),
     {
       name: 'sembako-berkah-storage', // unique name for localStorage
