@@ -4,6 +4,12 @@ import Footer from "@/components/Footer";
 import Toast from "@/components/Toast";
 import LayoutWrapper from "@/components/LayoutWrapper";
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+}
+
 export const metadata = {
   title: "Sembako Berkah - Kasir, Logistik, & Dashboard Pemilik",
   description: "Website Toko Sembako Online",

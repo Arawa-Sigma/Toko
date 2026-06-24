@@ -423,16 +423,35 @@ a {
     align-items: start;
 }
 
+.sticky-product-img {
+    position: sticky;
+    top: 100px;
+    z-index: 10;
+}
+
+.sticky-checkout-card {
+    position: sticky;
+    top: 24px;
+    z-index: 10;
+}
+
 @media(max-width: 1024px) {
     .tokopediaGrid {
         grid-template-columns: 300px 1fr;
-        /* Kolom kanan (Sticky card) bisa dipindah ke baris baru atau ke bawah pada layar kecil */
+    }
+    .sticky-product-img,
+    .sticky-checkout-card {
+        position: relative !important;
+        top: 0 !important;
     }
 }
 
 @media(max-width: 768px) {
     .tokopediaGrid {
         grid-template-columns: 1fr;
+    }
+    .desktop-sticky-nav {
+        display: none !important;
     }
 }
 
@@ -1695,9 +1714,9 @@ a {
 }
 
 /* ==========================================
-   MOBILE RESPONSIVE (≤ 480px) - Android/Phone
+   MOBILE RESPONSIVE (≤ 560px) - Android/Phone
    ========================================== */
-@media (max-width: 480px) {
+@media (max-width: 560px) {
   /* -- Carousel -- */
   .carousel-container {
     height: 200px;
@@ -1864,6 +1883,63 @@ a {
     font-size: 0.72rem !important;
     margin-bottom: 12px !important;
     max-width: 100% !important;
+  }
+
+  /* -- Product Details Page -- */
+  .product-tabs {
+    flex-direction: row !important;
+    align-items: center !important;
+    padding: 0 12px !important;
+    height: 44px !important;
+  }
+  .product-tabs-title {
+    display: none !important;
+  }
+  .product-tabs-links {
+    gap: 16px !important;
+    overflow-x: auto;
+    white-space: nowrap;
+    width: 100%;
+    padding-bottom: 0 !important;
+    align-items: center !important;
+  }
+  .product-tabs-links::-webkit-scrollbar {
+    display: none;
+  }
+  .review-summary {
+    flex-direction: column;
+    gap: 16px !important;
+    padding: 16px !important;
+    align-items: flex-start !important;
+  }
+  .review-summary-left {
+    min-width: unset !important;
+  }
+  .review-star-big {
+    font-size: 1.8rem !important;
+  }
+  .review-score-big {
+    font-size: 2.2rem !important;
+  }
+  .review-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .product-page-title {
+    font-size: 1.15rem !important;
+  }
+  .product-page-price {
+    font-size: 1.5rem !important;
+    margin-bottom: 16px !important;
+  }
+  .product-page-strike {
+    font-size: 0.85rem !important;
+  }
+  .review-comment-text {
+    font-size: 0.85rem !important;
+  }
+  .product-image-container {
+    max-width: 300px !important;
+    margin: 0 auto 12px auto !important;
   }
   .fireText {
     font-size: 1.15rem;

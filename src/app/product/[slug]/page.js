@@ -197,7 +197,7 @@ export default function ProductDetail() {
         <main className="contentArea" style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
             {/* Sticky Navigation Bar */}
             {isSticky && (
-                <div style={{ position: 'fixed', top: '64px', left: 0, right: 0, background: '#fff', borderBottom: '1px solid var(--border)', zIndex: 40, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                <div className="desktop-sticky-nav" style={{ position: 'fixed', top: '64px', left: 0, right: 0, background: '#fff', borderBottom: '1px solid var(--border)', zIndex: 40, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                     <div className="product-tabs" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', height: '60px', padding: '0 20px' }}>
                         <div className="product-tabs-title" style={{ fontWeight: 800, fontSize: '1rem', marginRight: '40px', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{product.name}</div>
                         <div className="product-tabs-links" style={{ display: 'flex', gap: '32px', height: '100%' }}>
@@ -222,8 +222,8 @@ export default function ProductDetail() {
             <div className="tokopediaGrid">
 
                 {/* KOLOM 1: Gambar Produk */}
-                <div style={{ position: 'sticky', top: '100px' }}>
-                    <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)', background: '#f8fafc', position: 'relative', marginBottom: '12px' }}>
+                <div className="sticky-product-img">
+                    <div className="product-image-container" style={{ width: '100%', aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)', background: '#f8fafc', position: 'relative', marginBottom: '12px' }}>
                         {isOut && <div className="stockOverlay" style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}><div style={{ background: 'var(--danger)', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontWeight: 900, letterSpacing: '1px' }}>STOK HABIS</div></div>}
                         <img src={img} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
@@ -236,8 +236,8 @@ export default function ProductDetail() {
                 </div>
 
                 {/* KOLOM 2: Info & Detail */}
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <h1 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '12px', color: '#111827', lineHeight: '1.4' }}>{product.name}</h1>
+                <div className="product-info-col" style={{ display: 'flex', flexDirection: 'column' }}>
+                    <h1 className="product-page-title" style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '12px', color: '#111827', lineHeight: '1.4' }}>{product.name}</h1>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', fontSize: '0.9rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <span style={{ fontWeight: 700 }}>Terjual {terjualCount === 0 ? "0" : `${terjualCount}+`}</span>
@@ -249,10 +249,10 @@ export default function ProductDetail() {
                         </div>
                     </div>
 
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#111827', marginBottom: '24px' }}>
+                    <div className="product-page-price" style={{ fontSize: '2rem', fontWeight: 800, color: '#111827', marginBottom: '24px' }}>
                         Rp{finalPrice.toLocaleString('id-ID')}
                         {hasDisc && <span style={{ marginLeft: '12px', fontSize: '1rem', background: '#fce7f3', color: '#db2777', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>{product.discount}%</span>}
-                        {hasDisc && <span style={{ marginLeft: '8px', fontSize: '1rem', textDecoration: 'line-through', color: 'var(--muted)', fontWeight: 500 }}>Rp{basePrice.toLocaleString('id-ID')}</span>}
+                        {hasDisc && <span className="product-page-strike" style={{ marginLeft: '8px', fontSize: '1rem', textDecoration: 'line-through', color: 'var(--muted)', fontWeight: 500 }}>Rp{basePrice.toLocaleString('id-ID')}</span>}
                     </div>
 
                     {product.variants && product.variants.length > 0 && (
@@ -307,7 +307,7 @@ export default function ProductDetail() {
                 </div>
 
                 {/* KOLOM 3: Sticky Card (Atur jumlah dan catatan) */}
-                <div style={{ position: 'sticky', top: '24px' }}>
+                <div className="sticky-checkout-card">
 
                     {hasDisc && (
                         <div className="wavyGradient" style={{ borderRadius: '8px', padding: '12px 16px', color: '#fff', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -382,10 +382,10 @@ export default function ProductDetail() {
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', marginBottom: '24px', textTransform: 'uppercase' }}>Ulasan Pembeli</h2>
 
                 <div className="review-summary" style={{ display: 'flex', gap: '40px', alignItems: 'center', marginBottom: '32px', padding: '24px', border: '1px solid var(--border)', borderRadius: '12px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '200px' }}>
+                    <div className="review-summary-left" style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '200px' }}>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                            <span style={{ color: 'var(--warn)', fontSize: '2.5rem' }}>★</span>
-                            <span style={{ fontSize: '3.5rem', fontWeight: 800 }}>{displayRating}</span>
+                            <span className="review-star-big" style={{ color: 'var(--warn)', fontSize: '2.5rem' }}>★</span>
+                            <span className="review-score-big" style={{ fontSize: '3.5rem', fontWeight: 800 }}>{displayRating}</span>
                             <span style={{ fontSize: '1rem', color: 'var(--muted)', fontWeight: 700 }}>/5.0</span>
                         </div>
                         <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{reviewCount > 0 ? "96% pembeli merasa puas" : "Belum ada penilaian"}</div>
@@ -469,7 +469,7 @@ export default function ProductDetail() {
                                     )}
                                     <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{rev.user_name}</div>
                                 </div>
-                                <div style={{ fontSize: '0.95rem', color: '#334155', marginBottom: '12px', whiteSpace: 'pre-wrap' }}>{rev.comment}</div>
+                                <div className="review-comment-text" style={{ fontSize: '0.95rem', color: '#334155', marginBottom: '12px', whiteSpace: 'pre-wrap' }}>{rev.comment}</div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', fontWeight: 700 }}>
                                     <div style={{ color: 'var(--muted)', cursor: 'pointer' }}><i className="fas fa-thumbs-up"></i> {rev.helpful_count} orang terbantu</div>
                                 </div>
