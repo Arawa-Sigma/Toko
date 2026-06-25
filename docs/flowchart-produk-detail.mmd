@@ -12,8 +12,8 @@ flowchart TD
     H --> J{Produk Punya Varian?}
     J -->|Ya| K[Tampil Tombol Pilih Varian]
     K --> L[User Pilih Varian]
-    L --> M[Update Harga & Stok berdasarkan Varian]
-    J -->|Tidak| N[Gunakan Harga & Stok Utama]
+    L --> M[Update Harga dan Stok berdasarkan Varian]
+    J -->|Tidak| N[Gunakan Harga dan Stok Utama]
     M --> N
 
     H --> O{Stok > 0?}
@@ -29,14 +29,14 @@ flowchart TD
 
     H --> X[Tab Navigasi]
     X --> Y{Pilih Tab}
-    Y -->|Detail Produk| Z[Tampil Deskripsi & Spesifikasi]
-    Y -->|Ulasan| AA[Tampil Daftar Ulasan & Rating]
+    Y -->|Detail Produk| Z[Tampil Deskripsi dan Spesifikasi]
+    Y -->|Ulasan| AA[Tampil Daftar Ulasan dan Rating]
 
     AA --> AB[Tampil Distribusi Rating Bintang]
-    AB --> AC[Daftar Review dengan Avatar & Rating]
+    AB --> AC[Daftar Review dengan Avatar dan Rating]
 
     H --> AD{Ada Diskon Aktif?}
-    AD -->|Ya & Belum Kadaluarsa| AE[Tampil Badge Diskon + Harga Coret + Hitung Mundur]
+    AD -->|Ya dan Belum Kadaluarsa| AE[Tampil Badge Diskon + Harga Coret + Hitung Mundur]
     AD -->|Kadaluarsa atau Tidak Ada| AF[Tampil Harga Normal]
 
     H --> AG[Bagian Produk Terkait 5 Produk Acak]

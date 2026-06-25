@@ -142,7 +142,7 @@ flowchart TD
     RR -->|Pesanan Saya| SS[List Pesanan Pengguna]
     RR -->|Edit Profil| TT[Update Username, Nama, Telepon, dll]
     RR -->|Ganti Password| UU[Update Password Supabase]
-    RR -->|Upload Foto| VV[Crop & Upload Avatar ke Storage]
+    RR -->|Upload Foto| VV[Crop dan Upload Avatar ke Storage]
     RR -->|Tambah Alamat| WW[Form Alamat + Map Picker]
     RR -->|Minta Akses Owner| XX[Kirim Role Request ke Admin]
 
@@ -152,13 +152,13 @@ flowchart TD
     AAA --> BBB[Admin Review Retur di Dashboard]
 
     T --> CCC{Menu Dashboard Admin}
-    CCC -->|Dashboard| DDD[Analitik & Grafik Performa]
+    CCC -->|Dashboard| DDD[Analitik dan Grafik Performa]
     CCC -->|Pesanan| EEE[Kelola Status Pesanan]
     CCC -->|Produk| FFF[CRUD Produk]
     CCC -->|Retur| GGG[Kelola Permintaan Retur]
-    CCC -->|Keuangan| HHH[Laporan Keuangan & Pengeluaran]
-    CCC -->|Pengguna| III[Kelola User & Role Request]
-    CCC -->|Diskon| JJJ[Set Diskon Produk & Voucher]
+    CCC -->|Keuangan| HHH[Laporan Keuangan dan Pengeluaran]
+    CCC -->|Pengguna| III[Kelola User dan Role Request]
+    CCC -->|Diskon| JJJ[Set Diskon Produk dan Voucher]
     CCC -->|Pesan| KKK[Chat Realtime dengan Pelanggan]
     CCC -->|Notifikasi| LLL[Kelola Notifikasi Sistem]
 
@@ -349,8 +349,8 @@ flowchart TD
     H --> J{Produk Punya Varian?}
     J -->|Ya| K[Tampil Tombol Pilih Varian]
     K --> L[User Pilih Varian]
-    L --> M[Update Harga & Stok berdasarkan Varian]
-    J -->|Tidak| N[Gunakan Harga & Stok Utama]
+    L --> M[Update Harga dan Stok berdasarkan Varian]
+    J -->|Tidak| N[Gunakan Harga dan Stok Utama]
     M --> N
 
     H --> O{Stok > 0?}
@@ -366,14 +366,14 @@ flowchart TD
 
     H --> X[Tab Navigasi]
     X --> Y{Pilih Tab}
-    Y -->|Detail Produk| Z[Tampil Deskripsi & Spesifikasi]
-    Y -->|Ulasan| AA[Tampil Daftar Ulasan & Rating]
+    Y -->|Detail Produk| Z[Tampil Deskripsi dan Spesifikasi]
+    Y -->|Ulasan| AA[Tampil Daftar Ulasan dan Rating]
 
     AA --> AB[Tampil Distribusi Rating Bintang]
-    AB --> AC[Daftar Review dengan Avatar & Rating]
+    AB --> AC[Daftar Review dengan Avatar dan Rating]
 
     H --> AD{Ada Diskon Aktif?}
-    AD -->|Ya & Belum Kadaluarsa| AE[Tampil Badge Diskon + Harga Coret + Hitung Mundur]
+    AD -->|Ya dan Belum Kadaluarsa| AE[Tampil Badge Diskon + Harga Coret + Hitung Mundur]
     AD -->|Kadaluarsa atau Tidak Ada| AF[Tampil Harga Normal]
 
     H --> AG[Bagian Produk Terkait 5 Produk Acak]
@@ -571,7 +571,7 @@ flowchart TD
     B --> O[Tab Navigasi Profil]
     O --> P{Pilih Tab}
 
-    P -->|Dashboard Pesanan| Q[Tampil Ringkasan & List Pesanan]
+    P -->|Dashboard Pesanan| Q[Tampil Ringkasan dan List Pesanan]
     Q --> R[Filter Pesanan berdasarkan Status]
     R --> S[Klik Detail Pesanan]
     S --> T[Fetch order_items dari Supabase]
@@ -666,13 +666,13 @@ flowchart TD
     F --> G[Tampil Badge Notif di Header]
 
     E --> H{Menu Sidebar}
-    H -->|Dashboard| I[/dashboard - Analitik & Grafik]
+    H -->|Dashboard| I[/dashboard - Analitik dan Grafik]
     H -->|Pesanan| J[/dashboard/orders - Manajemen Pesanan]
     H -->|Produk| K[/dashboard/products - CRUD Produk]
     H -->|Retur| L[/dashboard/returns - Pengembalian Barang]
     H -->|Keuangan| M[/dashboard/finance - Laporan Keuangan]
     H -->|Pengguna| N[/dashboard/users - Manajemen User]
-    H -->|Diskon| O[/dashboard/discounts - Diskon & Voucher]
+    H -->|Diskon| O[/dashboard/discounts - Diskon dan Voucher]
     H -->|Pesan| P[/dashboard/chat - Chat Pelanggan]
     H -->|Notifikasi| Q[/dashboard/notifications]
     H -->|Lihat Toko| R[Kembali ke / Etalase]
