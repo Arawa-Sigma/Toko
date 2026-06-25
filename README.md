@@ -89,7 +89,7 @@ flowchart TD
     P -->|Perlu Verifikasi Email| Q[Tampil Pesan Periksa Email]
     Q --> F
 
-    J --> R[/auth/callback]
+    J --> R[Halaman /auth/callback]
     R --> S[Supabase Auth Callback]
     S --> M
 
@@ -666,15 +666,15 @@ flowchart TD
     F --> G[Tampil Badge Notif di Header]
 
     E --> H{Menu Sidebar}
-    H -->|Dashboard| I[/dashboard - Analitik dan Grafik]
-    H -->|Pesanan| J[/dashboard/orders - Manajemen Pesanan]
-    H -->|Produk| K[/dashboard/products - CRUD Produk]
-    H -->|Retur| L[/dashboard/returns - Pengembalian Barang]
-    H -->|Keuangan| M[/dashboard/finance - Laporan Keuangan]
-    H -->|Pengguna| N[/dashboard/users - Manajemen User]
-    H -->|Diskon| O[/dashboard/discounts - Diskon dan Voucher]
-    H -->|Pesan| P[/dashboard/chat - Chat Pelanggan]
-    H -->|Notifikasi| Q[/dashboard/notifications]
+    H -->|Dashboard| I[Halaman /dashboard - Analitik dan Grafik]
+    H -->|Pesanan| J[Halaman /dashboard/orders - Manajemen Pesanan]
+    H -->|Produk| K[Halaman /dashboard/products - CRUD Produk]
+    H -->|Retur| L[Halaman /dashboard/returns - Pengembalian Barang]
+    H -->|Keuangan| M[Halaman /dashboard/finance - Laporan Keuangan]
+    H -->|Pengguna| N[Halaman /dashboard/users - Manajemen User]
+    H -->|Diskon| O[Halaman /dashboard/discounts - Diskon dan Voucher]
+    H -->|Pesan| P[Halaman /dashboard/chat - Chat Pelanggan]
+    H -->|Notifikasi| Q[Halaman /dashboard/notifications]
     H -->|Lihat Toko| R[Kembali ke / Etalase]
 
     %% DASHBOARD ANALITIK
