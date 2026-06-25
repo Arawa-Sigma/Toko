@@ -1,0 +1,57 @@
+flowchart TD
+    A([Start]) --> B[Buka /product/slug]
+    B --> C[Fetch Produk berdasarkan Slug dari Supabase]
+    C --> D{Produk Ditemukan?}
+    D -->|Tidak| E[Toast Error + Redirect ke /]
+    D -->|Ya| F[Fetch Reviews Produk dari Supabase]
+    F --> G[Fetch Produk Related - 5 Acak]
+    G --> H[Tampil Halaman Detail Produk]
+
+    H --> I[Tampil Gambar, Nama, Harga, Stok, Rating]
+
+    H --> J{Produk Punya Varian?}
+    J -->|Ya| K[Tampil Tombol Pilih Varian]
+    K --> L[User Pilih Varian]
+    L --> M[Update Harga & Stok berdasarkan Varian]
+    J -->|Tidak| N[Gunakan Harga & Stok Utama]
+    M --> N
+
+    H --> O{Stok > 0?}
+    O -->|Tidak| P[Tampil Label STOK HABIS, Tombol Nonaktif]
+    O -->|Ya| Q[Tombol Aktif: Masukkan Keranjang + Beli Sekarang]
+
+    Q --> R[User Atur Jumlah 1 hingga Max Stok]
+    R --> S{Aksi User}
+    S -->|Masukkan Keranjang| T[addToCart ke Zustand Store]
+    T --> U[Toast Berhasil Masuk Keranjang]
+    S -->|Beli Sekarang| V[addToCart + Redirect ke /keranjang]
+    S -->|Toggle Wishlist| W[toggleWishlist di Zustand]
+
+    H --> X[Tab Navigasi]
+    X --> Y{Pilih Tab}
+    Y -->|Detail Produk| Z[Tampil Deskripsi & Spesifikasi]
+    Y -->|Ulasan| AA[Tampil Daftar Ulasan & Rating]
+
+    AA --> AB[Tampil Distribusi Rating Bintang]
+    AB --> AC[Daftar Review dengan Avatar & Rating]
+
+    H --> AD{Ada Diskon Aktif?}
+    AD -->|Ya & Belum Kadaluarsa| AE[Tampil Badge Diskon + Harga Coret + Hitung Mundur]
+    AD -->|Kadaluarsa atau Tidak Ada| AF[Tampil Harga Normal]
+
+    H --> AG[Bagian Produk Terkait 5 Produk Acak]
+    AG --> AH[User Klik Produk Terkait]
+    AH --> B
+
+    %% Menambahkan oval End pada titik akhir
+    E --> Z_END([End])
+    I --> Z_END([End])
+    N --> Z_END([End])
+    P --> Z_END([End])
+    U --> Z_END([End])
+    V --> Z_END([End])
+    W --> Z_END([End])
+    Z --> Z_END([End])
+    AC --> Z_END([End])
+    AE --> Z_END([End])
+    AF --> Z_END([End])

@@ -1,0 +1,56 @@
+flowchart TD
+    A([Start]) --> B[Buka / - Halaman Etalase]
+    B --> C[Fetch Produk dari Supabase]
+    C --> D{Loading?}
+    D -->|Ya| E[Tampil Komponen Loading]
+    D -->|Tidak| F[Tampil Etalase Lengkap]
+
+    F --> G[Hero Carousel Promo Gambar]
+    F --> H[Bagian Promo Spesial + Kenapa Kami]
+    F --> I[Grid Kategori Produk - 12 Kategori]
+    F --> J{Ada Produk Diskon Aktif?}
+    J -->|Ya| K[Tampil Bagian Sedang Diskon Besar]
+    J -->|Tidak| L[Tampil Grid Produk Utama]
+    K --> L
+
+    L --> M{Filter Aktif?}
+    M -->|Kategori dipilih| N[Filter produk.category === kategori]
+    M -->|Search diisi| O[Filter produk.name contains query]
+    M -->|Keduanya| P[Filter Kategori AND Nama]
+    M -->|Tidak ada| Q[Tampil Semua Produk Aktif]
+    N --> Q
+    O --> Q
+    P --> Q
+
+    Q --> R{User Klik Produk}
+    R -->|Klik kartu produk| S[Navigasi ke /product/slug]
+    R -->|Klik Beli Langsung| T[Buka Modal Quick Buy]
+    R -->|Klik Hati Wishlist| U[Toggle Wishlist di Zustand Store]
+
+    T --> V[Tampil Info Produk: Nama, Harga, Stok]
+    V --> W{Produk Punya Varian?}
+    W -->|Ya| X[Tampil Tombol Varian, User Pilih]
+    W -->|Tidak| Y[Langsung ke Pengaturan Jumlah]
+    X --> Y
+    Y --> Z[Atur Jumlah 1 hingga Max Stok]
+    Z --> AA{User Aksi}
+    AA -->|Tambah Keranjang| AB[addToCart ke Zustand]
+    AB --> AC[Toast Sukses, Tutup Modal]
+    AA -->|Beli Langsung| AD[addToCart + Navigasi ke /keranjang]
+    AA -->|Tutup Modal| AE[Tutup Modal, Kembali ke Etalase]
+
+    U --> AF{Sudah di Wishlist?}
+    AF -->|Ya| AG[Hapus dari Wishlist]
+    AF -->|Tidak| AH[Tambah ke Wishlist]
+    AG --> Q
+    AH --> Q
+
+    %% Menambahkan oval End pada titik akhir
+    E --> Z_END([End])
+    G --> Z_END([End])
+    H --> Z_END([End])
+    I --> Z_END([End])
+    S --> Z_END([End])
+    AC --> Z_END([End])
+    AD --> Z_END([End])
+    AE --> Z_END([End])

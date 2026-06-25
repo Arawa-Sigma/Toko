@@ -1,0 +1,46 @@
+flowchart TD
+    A([Start]) --> B[Pesanan Selesai di /profile]
+    B --> C[User Klik Ajukan Retur]
+    C --> D[Buka Modal Retur]
+    D --> E[Pilih Alasan Retur]
+    E --> F{Alasan Diisi?}
+    F -->|Tidak| G[Toast Error: Alasan Wajib]
+    G --> E
+    F -->|Ya| H[INSERT ke Tabel returns di Supabase]
+    H --> I{Berhasil?}
+    I -->|Gagal| J[Toast Error]
+    I -->|Ya| K[Toast Sukses: Retur Diajukan]
+    K --> L[Tutup Modal]
+
+    L --> M[--- Sisi Admin ---]
+    M --> N[Admin Buka /dashboard/returns]
+    N --> O[Fetch returns JOIN orders dari Supabase]
+    O --> P{Ada Pengajuan Retur?}
+    P -->|Tidak| Q[Tampil Pesan: Belum Ada Retur]
+    P -->|Ya| R[Tampil Kartu Retur dengan Detail]
+
+    R --> S[Tampil Info: ID Order, Nama Pembeli, Total, Alasan, Tanggal]
+    S --> T{Keputusan Admin}
+
+    T -->|Setujui| U[Klik Tombol Setujui]
+    U --> V[Konfirmasi Dialog]
+    V -->|Batal| S
+    V -->|OK| W[UPDATE returns.status = Disetujui]
+    W --> X[UPDATE orders.status = Dikembalikan Retur]
+    X --> Y[UI Update Kartu Retur Jadi Disetujui]
+
+    T -->|Tolak| Z[Klik Tombol Tolak]
+    Z --> AA[Konfirmasi Dialog]
+    AA -->|Batal| S
+    AA -->|OK| AB[UPDATE returns.status = Ditolak]
+    AB --> AC[UPDATE orders.status = Selesai]
+    AC --> AD[UI Update Kartu Retur Jadi Ditolak]
+
+    Y --> AE[Pengembalian Dana Manual di Luar Sistem]
+    AD --> AF[Pesanan Kembali ke Status Selesai]
+
+    %% Menambahkan oval End pada titik akhir
+    J --> Z_END([End])
+    Q --> Z_END([End])
+    AE --> Z_END([End])
+    AF --> Z_END([End])

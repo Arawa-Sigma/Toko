@@ -1,0 +1,119 @@
+flowchart TD
+    A([🚀 Start]) --> B[Buka Website SembakoBerkah]
+    B --> C[Halaman Utama / Etalase]
+    C --> D{Sudah Login?}
+
+    D -->|Tidak| E[Tampil Navbar: Login / Daftar]
+    E --> F[Buka /auth]
+    F --> G{Pilih Aksi}
+    G -->|Login| H[Form Login Email + Password]
+    G -->|Daftar| I[Form Registrasi Nama + Email + Password]
+    G -->|Google OAuth| J[Redirect Google OAuth]
+
+    H --> K{Validasi Login}
+    K -->|Gagal| L[Tampil Pesan Error]
+    L --> H
+    K -->|Berhasil| M{Cek Role User}
+
+    I --> N{Validasi Registrasi}
+    N -->|Gagal| O[Tampil Error Validasi]
+    O --> I
+    N -->|Berhasil| P{Email Verifikasi?}
+    P -->|Session Langsung| M
+    P -->|Perlu Verifikasi Email| Q[Tampil Pesan Periksa Email]
+    Q --> F
+
+    J --> R[/auth/callback]
+    R --> S[Supabase Auth Callback]
+    S --> M
+
+    M -->|Role: owner| T[Dashboard Admin /dashboard]
+    M -->|Role: user / tidak ada| U[Halaman Utama / Etalase]
+
+    D -->|Ya| U
+
+    U --> V{Pilih Aksi di Etalase}
+    V -->|Filter Kategori| W[Filter Produk berdasarkan Kategori]
+    V -->|Cari Produk| X[Cari Produk berdasarkan Nama]
+    V -->|Klik Produk| Y[Halaman Detail Produk /product/slug]
+    V -->|Beli Langsung - Quick Buy| Z[Modal Quick Buy]
+    V -->|Lihat Keranjang| AA[Halaman Keranjang /keranjang]
+    V -->|Profil| BB[Halaman Profil /profile]
+
+    W --> U
+    X --> U
+    Y --> CC{Aksi di Detail Produk}
+    CC -->|Tambah ke Keranjang| AA
+    CC -->|Beli Langsung| AA
+    CC -->|Toggle Wishlist| U
+
+    Z --> ZZ{Pilih Varian + Qty}
+    ZZ -->|Tambah Keranjang| AA
+    ZZ -->|Beli Langsung| AA
+
+    AA --> DD{Aksi di Keranjang}
+    DD -->|Masukkan Kode Promo| EE{Validasi Voucher}
+    EE -->|Valid| FF[Diskon Terpasang]
+    EE -->|Tidak Valid| GG[Pesan Error Voucher]
+    FF --> DD
+    GG --> DD
+    DD -->|Pilih Item + Checkout| HH{Session Login?}
+    HH -->|Tidak| F
+    HH -->|Ya| II[Halaman Checkout /checkout]
+
+    II --> JJ{Isi Nama Penerima + Kurir}
+    JJ -->|Klik Bayar Sekarang| KK{Cek Stok}
+    KK -->|Stok Tidak Cukup| LL[Error: Stok Habis]
+    LL --> II
+    KK -->|Stok Cukup| MM[Buat Order di Supabase]
+    MM --> NN[Simpan Order Items]
+    NN --> OO[Kurangi Stok Produk]
+    OO --> PP[Buat Notifikasi ke Admin]
+    PP --> QQ[Hapus dari Keranjang]
+    QQ --> BB
+
+    BB --> RR{Tab Profil}
+    RR -->|Pesanan Saya| SS[List Pesanan Pengguna]
+    RR -->|Edit Profil| TT[Update Username, Nama, Telepon, dll]
+    RR -->|Ganti Password| UU[Update Password Supabase]
+    RR -->|Upload Foto| VV[Crop & Upload Avatar ke Storage]
+    RR -->|Tambah Alamat| WW[Form Alamat + Map Picker]
+    RR -->|Minta Akses Owner| XX[Kirim Role Request ke Admin]
+
+    SS --> YY{Detail Pesanan}
+    YY -->|Pesanan Selesai| ZZ2[Ajukan Retur]
+    ZZ2 --> AAA[Data Masuk ke Tabel returns]
+    AAA --> BBB[Admin Review Retur di Dashboard]
+
+    T --> CCC{Menu Dashboard Admin}
+    CCC -->|Dashboard| DDD[Analitik & Grafik Performa]
+    CCC -->|Pesanan| EEE[Kelola Status Pesanan]
+    CCC -->|Produk| FFF[CRUD Produk]
+    CCC -->|Retur| GGG[Kelola Permintaan Retur]
+    CCC -->|Keuangan| HHH[Laporan Keuangan & Pengeluaran]
+    CCC -->|Pengguna| III[Kelola User & Role Request]
+    CCC -->|Diskon| JJJ[Set Diskon Produk & Voucher]
+    CCC -->|Pesan| KKK[Chat Realtime dengan Pelanggan]
+    CCC -->|Notifikasi| LLL[Kelola Notifikasi Sistem]
+
+    III --> MMM{Aksi Role Request}
+    MMM -->|Approve| NNN[Update Role Profil jadi Owner]
+    MMM -->|Reject| OOO[Tolak Permintaan]
+
+    %% Menambahkan oval End pada titik akhir
+    TT --> Z_END([End])
+    UU --> Z_END([End])
+    VV --> Z_END([End])
+    WW --> Z_END([End])
+    XX --> Z_END([End])
+    BBB --> Z_END([End])
+    DDD --> Z_END([End])
+    EEE --> Z_END([End])
+    FFF --> Z_END([End])
+    GGG --> Z_END([End])
+    HHH --> Z_END([End])
+    JJJ --> Z_END([End])
+    KKK --> Z_END([End])
+    LLL --> Z_END([End])
+    NNN --> Z_END([End])
+    OOO --> Z_END([End])

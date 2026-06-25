@@ -1,0 +1,66 @@
+flowchart TD
+    A([Start]) --> B[Buka /keranjang]
+    B --> C[Fetch Semua Produk dari Supabase]
+    C --> D[Enrich Cart Items dengan Data Produk Terbaru]
+    D --> E{Cart Kosong?}
+    E -->|Ya| F[Tampil Pesan Keranjang Kosong]
+    F --> G[Tombol Mulai Belanja ke /]
+    E -->|Tidak| H[Tampil Daftar Item Keranjang]
+
+    H --> I{Aksi User}
+
+    I -->|Pilih Semua Checkbox| J[Tandai Semua Item Valid]
+    I -->|Pilih Item Tertentu| K[Toggle Checkbox Item]
+    I -->|Hapus Item Terpilih| L{Ada Item Terpilih?}
+    L -->|Tidak| M[Toast Error: Pilih dulu]
+    L -->|Ya| N[Konfirmasi Hapus]
+    N -->|Batal| H
+    N -->|OK| O[removeFromCart untuk Setiap ID Terpilih]
+    O --> H
+
+    I -->|Ubah Qty| P{Delta Qty}
+    P -->|Kurang = 0| Q[removeFromCart - Hapus Item]
+    P -->|Tambah melebihi stok| R[Toast Error: Qty melebihi stok]
+    P -->|Normal| S[updateCartQty di Zustand]
+    Q --> H
+    R --> H
+    S --> H
+
+    I -->|Input Kode Promo| T[Klik Gunakan Promo]
+    T --> U{Voucher Code Kosong?}
+    U -->|Ya| V[Tidak Proses]
+    U -->|Tidak| W[Query Supabase vouchers by code]
+    W --> X{Voucher Ditemukan?}
+    X -->|Tidak| Y[Toast Error: Kode tidak valid]
+    Y --> H
+    X -->|Ya| Z{Voucher Masih Aktif?}
+    Z -->|Tidak Aktif / Kadaluarsa| AA[Toast Error: Voucher kadaluarsa]
+    AA --> H
+    Z -->|Aktif| AB{Minimal Belanja Terpenuhi?}
+    AB -->|Tidak| AC[Toast Error: Belum mencapai min. pembelian]
+    AC --> H
+    AB -->|Ya| AD[setAppliedVoucher ke Zustand]
+    AD --> AE[Toast Sukses, Tampil Info Diskon Voucher]
+    AE --> H
+
+    I -->|Klik Checkout - Item Dipilih| AF{Ada Item Dipilih?}
+    AF -->|Tidak| AG[Toast Error: Pilih minimal 1 produk]
+    AF -->|Ya| AH[setSelectedForCheckout ke Zustand]
+    AH --> AI[Navigasi ke /checkout]
+
+    H --> AJ[Tampil Ringkasan]
+    AJ --> AK[Total Harga Item Terpilih]
+    AK --> AL{Voucher Terpasang?}
+    AL -->|Ya| AM[Tampil Total setelah Diskon Voucher]
+    AL -->|Tidak| AN[Tampil Total Tanpa Diskon]
+
+    %% Menambahkan oval End pada titik akhir
+    G --> Z_END([End])
+    J --> Z_END([End])
+    K --> Z_END([End])
+    M --> Z_END([End])
+    V --> Z_END([End])
+    AG --> Z_END([End])
+    AI --> Z_END([End])
+    AM --> Z_END([End])
+    AN --> Z_END([End])

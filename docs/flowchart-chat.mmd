@@ -1,0 +1,45 @@
+flowchart TD
+    A([Start]) --> B{User Sudah Login?}
+    B -->|Tidak| C[FloatingChat Tidak Muncul]
+    C --> END1([End])
+    B -->|Ya| D[FloatingChat Muncul di Pojok Kanan Bawah]
+
+    D --> E[Fetch chat_messages milik user dari Supabase]
+    E --> F[Hitung Pesan Admin yang Belum Dibaca]
+    F --> G{Ada Pesan Belum Dibaca?}
+    G -->|Ya| H[Tampil Badge Merah dengan Jumlah Unread]
+    G -->|Tidak| I[Tampil Tombol Chat Normal]
+
+    H --> J[User Klik Tombol Chat]
+    I --> J
+    J --> K[Buka Panel Chat]
+    K --> L[Tampil Riwayat Percakapan]
+    L --> M[Subscribe Realtime Supabase chat_messages]
+
+    M --> N{Pesan Baru Masuk dari Admin?}
+    N -->|Ya| O[Tambah Pesan ke Riwayat]
+    O --> P[Naikkan Jumlah Unread]
+    P --> L
+
+    L --> Q[User Ketik Pesan]
+    Q --> R{Panel Terbuka saat Kirim?}
+    R -->|Ya| S[INSERT ke Tabel chat_messages - sender = user]
+    S --> T{Berhasil?}
+    T -->|Gagal| U[Toast Error]
+    T -->|Berhasil| V[Pesan Tampil di Chat]
+    V --> W[Tandai Semua Pesan Admin sebagai Sudah Dibaca]
+    W --> X[UPDATE is_read = true untuk Pesan Admin]
+    X --> Y[Reset Unread Count ke 0]
+    Y --> L
+
+    L --> Z[User Tutup Panel Chat]
+    Z --> END2([End])
+
+    AA([Admin Side]) --> AB[Buka /dashboard/chat]
+    AB --> AC[Tampil Sidebar Semua Konversasi]
+    AC --> AD[Klik Konversasi User]
+    AD --> AE[Tampil Riwayat Pesan]
+    AE --> AF[Admin Balas Pesan]
+    AF --> AG[INSERT chat_messages - sender = admin]
+    AG --> AH[Realtime: FloatingChat User Dapat Pesan Baru]
+    AH --> END3([End])

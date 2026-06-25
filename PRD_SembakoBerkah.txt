@@ -1,0 +1,270 @@
+# Product Requirements Document (PRD)
+## SembakoBerkah — Platform Toko Sembako Online
+
+---
+
+## 1. Ringkasan Produk
+
+| Atribut | Detail |
+|---|---|
+| **Nama Produk** | SembakoBerkah |
+| **Tipe** | Web App E-Commerce (Next.js 16 + Supabase) |
+| **Target Pengguna** | Pelanggan, Staff Gudang, Owner Toko |
+| **Platform** | Web (Mobile-first, Responsive) |
+| **Tech Stack** | Next.js 16, React 19, Supabase (PostgreSQL + Auth), Zustand, Leaflet Maps |
+
+---
+
+## 2. Tujuan Produk
+
+SembakoBerkah adalah platform e-commerce untuk toko sembako lokal yang memungkinkan pelanggan berbelanja secara online, memantau pesanan, dan mengajukan retur — sementara owner dapat mengelola seluruh operasional toko dari satu dashboard terpadu.
+
+**Masalah yang Diselesaikan:**
+- Pelanggan tidak perlu datang ke toko untuk beli sembako
+- Owner dapat memantau stok, keuangan, dan pesanan secara real-time
+- Staff gudang bisa update status pengiriman secara digital
+
+---
+
+## 3. Aktor / Pengguna
+
+| Role | Deskripsi | Akses |
+|---|---|---|
+| **Pelanggan** | Pengguna umum yang berbelanja | Etalase, Keranjang, Checkout, Profile, Retur |
+| **Staff Gudang** | Karyawan yang mengelola pengiriman | Halaman Pengiriman `/pengiriman` |
+| **Owner** | Pemilik toko | Dashboard penuh: Produk, Keuangan, Pesanan, Diskon, Users, Chat, Notifikasi, Retur |
+| **All-Role** | Mode khusus Owner untuk coba semua fitur | Semua akses di atas sekaligus |
+
+---
+
+## 4. Fitur & Persyaratan
+
+### 4.1 Autentikasi (`/auth`)
+
+| ID | Fitur | Prioritas |
+|---|---|---|
+| AUTH-01 | Register dengan email @gmail.com + password (min 8 karakter, 1 kapital, 1 angka, 1 simbol) | 🔴 Wajib |
+| AUTH-02 | Login dengan email & password | 🔴 Wajib |
+| AUTH-03 | Login dengan Google OAuth (Supabase) | 🔴 Wajib |
+| AUTH-04 | Validasi form real-time (inline error message) | 🟡 Penting |
+| AUTH-05 | Redirect otomatis setelah login (owner → `/dashboard`, pelanggan → `/`) | 🔴 Wajib |
+| AUTH-06 | Show/hide password toggle | 🟡 Penting |
+
+---
+
+### 4.2 Etalase / Storefront (`/`)
+
+| ID | Fitur | Prioritas |
+|---|---|---|
+| STORE-01 | Hero carousel banner promo | 🟡 Penting |
+| STORE-02 | Filter produk berdasarkan kategori (12 kategori: Sembako, Minuman, Frozen Food, dll.) | 🔴 Wajib |
+| STORE-03 | Search produk real-time | 🔴 Wajib |
+| STORE-04 | Tampilan section: Best Seller, Diskon Besar, Semua Produk | 🟡 Penting |
+| STORE-05 | Card produk: nama, harga, diskon, stok, badge (Best Seller / Baru) | 🔴 Wajib |
+| STORE-06 | Tombol "Tambah ke Keranjang" dan Quick Buy dengan pemilihan varian & jumlah | 🔴 Wajib |
+| STORE-07 | Wishlist (simpan produk favorit) | 🟢 Opsional |
+| STORE-08 | Banner promo dengan kode voucher | 🟡 Penting |
+| STORE-09 | Diskon otomatis kedaluwarsa jika melewati `discount_end_date` | 🟡 Penting |
+| STORE-10 | Hanya produk berstatus "aktif" yang tampil | 🔴 Wajib |
+
+---
+
+### 4.3 Detail Produk (`/product/[slug]`)
+
+| ID | Fitur | Prioritas |
+|---|---|---|
+| PROD-01 | Gambar produk, nama, harga (coret jika diskon), deskripsi | 🔴 Wajib |
+| PROD-02 | Pemilihan varian produk (jika ada) | 🔴 Wajib |
+| PROD-03 | Pemilihan jumlah beli (tidak melebihi stok) | 🔴 Wajib |
+| PROD-04 | Tombol Tambah ke Keranjang & Beli Sekarang | 🔴 Wajib |
+
+---
+
+### 4.4 Keranjang (`/keranjang`)
+
+| ID | Fitur | Prioritas |
+|---|---|---|
+| CART-01 | Daftar item keranjang: gambar, nama, varian, harga, qty | 🔴 Wajib |
+| CART-02 | Update qty & hapus item per produk | 🔴 Wajib |
+| CART-03 | Checkbox seleksi item untuk checkout | 🔴 Wajib |
+| CART-04 | Input kode voucher & validasi | 🟡 Penting |
+| CART-05 | Ringkasan harga (subtotal, diskon voucher) | 🔴 Wajib |
+| CART-06 | Tombol "Checkout" yang menavigasi ke `/checkout` | 🔴 Wajib |
+
+---
+
+### 4.5 Checkout (`/checkout`)
+
+| ID | Fitur | Prioritas |
+|---|---|---|
+| CHK-01 | Tampil item yang dipilih dari keranjang | 🔴 Wajib |
+| CHK-02 | Input nama penerima pesanan | 🔴 Wajib |
+| CHK-03 | Pilihan kurir: Ambil Sendiri, JNE Reguler, GoSend Instant | 🔴 Wajib |
+| CHK-04 | Ringkasan biaya: Subtotal + PPN 10% + Ongkir + Diskon = Total | 🔴 Wajib |
+| CHK-05 | Validasi stok sebelum pesanan dibuat | 🔴 Wajib |
+| CHK-06 | Buat pesanan ke tabel `orders` & `order_items` | 🔴 Wajib |
+| CHK-07 | Kurangi stok produk otomatis setelah pesanan berhasil | 🔴 Wajib |
+| CHK-08 | Kirim notifikasi ke owner saat pesanan baru masuk | 🟡 Penting |
+| CHK-09 | Redirect ke `/profile` setelah checkout berhasil | 🔴 Wajib |
+| CHK-10 | Hanya bisa checkout jika sudah login | 🔴 Wajib |
+
+---
+
+### 4.6 Profile Pelanggan (`/profile`)
+
+| ID | Fitur | Prioritas |
+|---|---|---|
+| PROF-01 | Edit profil: nama, username, email, telepon, jenis kelamin, tanggal lahir | 🟡 Penting |
+| PROF-02 | Upload & crop foto profil | 🟢 Opsional |
+| PROF-03 | Ubah password | 🟡 Penting |
+| PROF-04 | Kelola alamat pengiriman (tambah, edit, hapus, set primary) dengan MapPicker | 🟡 Penting |
+| PROF-05 | Daftar pesanan beserta status (filter per status) | 🔴 Wajib |
+| PROF-06 | Detail pesanan (modal dengan item, harga, status) | 🔴 Wajib |
+| PROF-07 | Ajukan retur dengan alasan & upload foto | 🟡 Penting |
+| PROF-08 | Logout | 🔴 Wajib |
+
+---
+
+### 4.7 Invoice (`/invoice/[id]`)
+
+| ID | Fitur | Prioritas |
+|---|---|---|
+| INV-01 | Tampil detail transaksi: item, harga, total, tanggal | 🔴 Wajib |
+| INV-02 | Download sebagai PDF | 🟡 Penting |
+| INV-03 | Hanya bisa dilihat oleh pemilik pesanan | 🔴 Wajib |
+
+---
+
+### 4.8 Pengiriman — Staff Gudang (`/pengiriman`)
+
+| ID | Fitur | Prioritas |
+|---|---|---|
+| SHIP-01 | Daftar semua pesanan aktif | 🔴 Wajib |
+| SHIP-02 | Update status pesanan: Menunggu → Diproses → Dikemas → Siap Dikirim → Sampai | 🔴 Wajib |
+| SHIP-03 | Pelanggan konfirmasi "Barang Diterima" dari profil | 🔴 Wajib |
+| SHIP-04 | Auto-close transaksi setelah 4 hari jika tidak dikonfirmasi | 🟡 Penting |
+| SHIP-05 | Akses dibatasi hanya untuk role staff/owner | 🔴 Wajib |
+
+---
+
+### 4.9 Dashboard Owner (`/dashboard`)
+
+#### 4.9.1 Ringkasan & Analitik
+| ID | Fitur | Prioritas |
+|---|---|---|
+| DASH-01 | KPI Cards: Total Pesanan, Total Pendapatan, Pesanan Pending, Stok Kritis | 🔴 Wajib |
+| DASH-02 | Grafik pendapatan & pengeluaran per bulan (Line Chart) | 🟡 Penting |
+| DASH-03 | Grafik registrasi pengguna baru per bulan (Bar Chart) | 🟡 Penting |
+
+#### 4.9.2 Manajemen Produk (`/dashboard/products`)
+| ID | Fitur | Prioritas |
+|---|---|---|
+| DPROD-01 | CRUD produk: nama, kategori, harga, stok, gambar, status | 🔴 Wajib |
+| DPROD-02 | Manajemen varian produk (nama varian, harga, stok) | 🟡 Penting |
+| DPROD-03 | Set diskon produk dengan persentase & tanggal kedaluwarsa | 🟡 Penting |
+| DPROD-04 | Upload gambar produk ke Supabase Storage | 🔴 Wajib |
+| DPROD-05 | Tandai produk sebagai Best Seller | 🟢 Opsional |
+
+#### 4.9.3 Manajemen Pesanan (`/dashboard/orders`)
+| ID | Fitur | Prioritas |
+|---|---|---|
+| DORD-01 | Daftar semua pesanan dengan filter status | 🔴 Wajib |
+| DORD-02 | Detail pesanan per pelanggan | 🔴 Wajib |
+| DORD-03 | Update status pesanan manual | 🔴 Wajib |
+
+#### 4.9.4 Keuangan (`/dashboard/finance`)
+| ID | Fitur | Prioritas |
+|---|---|---|
+| DFIN-01 | Rekap pemasukan dari pesanan | 🔴 Wajib |
+| DFIN-02 | Input & tracking pengeluaran operasional | 🟡 Penting |
+| DFIN-03 | Laporan retur & estimasi kerugian | 🟡 Penting |
+
+#### 4.9.5 Manajemen Diskon/Voucher (`/dashboard/discounts`)
+| ID | Fitur | Prioritas |
+|---|---|---|
+| DISC-01 | CRUD voucher/promo: kode, tipe (persen/nominal), nilai, min belanja, maks diskon | 🔴 Wajib |
+| DISC-02 | Dua tipe voucher: potongan harga & potongan ongkir | 🟡 Penting |
+
+#### 4.9.6 Manajemen Pengguna (`/dashboard/users`)
+| ID | Fitur | Prioritas |
+|---|---|---|
+| USER-01 | Daftar semua pengguna terdaftar | 🔴 Wajib |
+| USER-02 | Ubah role pengguna (owner, staff, customer) | 🟡 Penting |
+
+#### 4.9.7 Retur (`/dashboard/returns`)
+| ID | Fitur | Prioritas |
+|---|---|---|
+| RET-01 | Daftar semua pengajuan retur dari pelanggan | 🔴 Wajib |
+| RET-02 | Lihat detail retur: alasan, foto bukti | 🟡 Penting |
+| RET-03 | Approve / Reject retur | 🟡 Penting |
+
+#### 4.9.8 Chat & Notifikasi
+| ID | Fitur | Prioritas |
+|---|---|---|
+| CHAT-01 | Inbox pesan pelanggan (`/dashboard/chat`) | 🟡 Penting |
+| NOTIF-01 | Pusat notifikasi dengan badge unread (`/dashboard/notifications`) | 🟡 Penting |
+| NOTIF-02 | Notifikasi berbeda per role (pelanggan, staff, owner) | 🟡 Penting |
+
+---
+
+## 5. Halaman Informasi
+
+| Halaman | Deskripsi |
+|---|---|
+| `/bantuan` | FAQ & Pusat Bantuan |
+| `/cara-pesan` | Panduan cara memesan |
+| `/syarat-ketentuan` | Syarat & Ketentuan penggunaan |
+
+---
+
+## 6. Database Schema (Supabase / PostgreSQL)
+
+```
+products         → id, name, slug, category, price, stock, image_url, status,
+                   discount, discount_end_date, is_best_seller, variants (JSON)
+
+orders           → id, user_id, buyer_name, courier, total_amount, status,
+                   payment_method, created_at
+
+order_items      → id, order_id, product_id, quantity, price_at_purchase
+
+profiles         → id (= auth.users.id), full_name, username, phone, avatar_url,
+                   gender, birth_date, role
+
+addresses        → id, user_id, name, phone, region, street, detail, label,
+                   is_primary, coordinates (JSON)
+
+vouchers         → id, code, discount_type (percent/flat), discount_amount,
+                   min_order, max_discount, is_active
+
+notifications    → id, title, message, type, unread, created_at
+
+returns          → id, order_id, user_id, reason, photo_url, status, created_at
+
+expenses         → id, description, amount, created_at
+```
+
+---
+
+## 7. Arsitektur Teknis
+
+```
+Frontend (Next.js 16 App Router)
+├── Layout Global  → Navbar, Footer, Toast, LayoutWrapper
+├── State Management → Zustand (cart, session, wishlist, voucher)
+├── Auth → Supabase Auth (Email + Google OAuth)
+├── Database → Supabase PostgreSQL (via @supabase/ssr)
+└── Storage → Supabase Storage (gambar produk & avatar)
+```
+
+---
+
+## 8. Non-Functional Requirements
+
+| Aspek | Target |
+|---|---|
+| **Responsif** | Mobile-first, breakpoint utama 375px (iPhone SE), 480px, 800px |
+| **Loading** | Skeleton/loading state pada fetch data |
+| **Keamanan** | RLS Supabase per tabel, validasi role di server |
+| **SEO** | Meta title, meta description, semantic HTML per halaman |
+| **UX** | Toast notification untuk setiap aksi penting |

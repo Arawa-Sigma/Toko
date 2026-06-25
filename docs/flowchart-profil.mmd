@@ -1,0 +1,94 @@
+flowchart TD
+    A([Start]) --> B[Buka /profile]
+    B --> C{Session Ada?}
+    C -->|Tidak| D[Tampil Halaman Profil Kosong / Belum Login]
+    C -->|Ya| E[Load User Metadata dari Session Zustand]
+    E --> F[Fetch Pesanan dari Supabase berdasarkan user_id]
+    E --> G[Fetch Role Request Status dari Supabase]
+    E --> H[Load Alamat dari user_metadata.addresses]
+
+    G --> I{Role Request = Approved?}
+    I -->|Ya| J[Auto-Update Role jadi Owner via Supabase Auth]
+    J --> K[Sync ke Tabel profiles]
+    K --> L[Refresh Session Zustand]
+    L --> M[Delete Role Request yang Sudah Diproses]
+    I -->|Pending / Tidak Ada| N[Tampil Status Permintaan]
+
+    B --> O[Tab Navigasi Profil]
+    O --> P{Pilih Tab}
+
+    P -->|Dashboard Pesanan| Q[Tampil Ringkasan & List Pesanan]
+    Q --> R[Filter Pesanan berdasarkan Status]
+    R --> S[Klik Detail Pesanan]
+    S --> T[Fetch order_items dari Supabase]
+    T --> U[Tampil Modal Detail Pesanan]
+    U --> V{Status Pesanan = Selesai?}
+    V -->|Ya| W[Tombol Ajukan Retur Aktif]
+    V -->|Tidak| X[Tombol Retur Nonaktif]
+    W --> Y[Klik Ajukan Retur]
+    Y --> Z[Isi Alasan Retur]
+    Z --> AA[INSERT ke Tabel returns Supabase]
+    AA --> AB[Toast Sukses Retur Diajukan]
+
+    P -->|Profil Saya| AC[Form Edit Profil]
+    AC --> AD[Ubah Username, Nama, Telepon, Jenis Kelamin, Tanggal Lahir]
+    AD --> AE[Klik Simpan Perubahan]
+    AE --> AF{Validasi Nomor Telepon}
+    AF -->|Tidak Valid 08 + 12 digit| AG[Toast Error Nomor Telepon]
+    AF -->|Valid / Kosong| AH[supabase.auth.updateUser dengan Data Baru]
+    AH --> AI[Sync ke Tabel profiles]
+    AI --> AJ[Refresh Session Zustand]
+    AJ --> AK[Toast Sukses Data Diperbarui]
+
+    P -->|Foto Profil| AL[Drag and Drop atau Pilih File]
+    AL --> AM[Validasi Tipe File Image saja]
+    AM --> AN[Buka Modal Crop]
+    AN --> AO[User Crop Gambar]
+    AO --> AP[Upload ke Supabase Storage bucket avatars]
+    AP --> AQ{Upload Berhasil?}
+    AQ -->|Gagal| AR[Toast Error Upload]
+    AQ -->|Berhasil| AS[Dapatkan Public URL]
+    AS --> AT[supabase.auth.updateUser dengan custom_avatar]
+    AT --> AU[Sync ke profiles.avatar_url]
+    AU --> AV[Refresh Session Zustand]
+    AV --> AW[Toast Sukses Foto Diperbarui]
+
+    P -->|Ganti Password| AX[Input Password Baru + Konfirmasi]
+    AX --> AY{Password Cocok?}
+    AY -->|Tidak| AZ[Toast Error Tidak Cocok]
+    AY -->|Ya| BA[supabase.auth.updateUser dengan Password Baru]
+    BA --> BB[Toast Sukses Password Diperbarui]
+
+    P -->|Alamat Saya| BC[Tampil Daftar Alamat]
+    BC --> BD[Klik Tambah Alamat Baru]
+    BD --> BE[Form Alamat: Nama, Telepon, Wilayah, Jalan, Detail, Label]
+    BE --> BF[Opsional: Buka Map Picker Leaflet untuk Koordinat]
+    BF --> BG[Simpan Alamat ke user_metadata.addresses]
+    BG --> BH[Update via supabase.auth.updateUser]
+
+    P -->|Minta Akses Owner| BI{Sudah Ada Role Request?}
+    BI -->|Ya - Pending| BJ[Tampil Status Menunggu Persetujuan]
+    BI -->|Ya - Approved| BK[Tampil Tombol Klaim sudah diklaim otomatis]
+    BI -->|Tidak Ada| BL[Tombol Ajukan Permintaan Aktif]
+    BL --> BM[Konfirmasi Dialog]
+    BM -->|OK| BN[INSERT ke Tabel role_requests Supabase]
+    BN --> BO[Toast Sukses Permintaan Dikirim]
+    BO --> BJ
+
+    %% Menambahkan oval End pada titik akhir
+    D --> Z_END([End])
+    F --> Z_END([End])
+    H --> Z_END([End])
+    M --> Z_END([End])
+    N --> Z_END([End])
+    X --> Z_END([End])
+    AB --> Z_END([End])
+    AG --> Z_END([End])
+    AK --> Z_END([End])
+    AR --> Z_END([End])
+    AW --> Z_END([End])
+    AZ --> Z_END([End])
+    BB --> Z_END([End])
+    BH --> Z_END([End])
+    BJ --> Z_END([End])
+    BK --> Z_END([End])

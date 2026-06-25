@@ -1,0 +1,64 @@
+flowchart TD
+    A([Start]) --> B[Buka /checkout]
+    B --> C{selectedForCheckout Kosong?}
+    C -->|Ya| D[Redirect Paksa ke /keranjang]
+    C -->|Tidak| E[Fetch Semua Produk dari Supabase]
+    E --> F[Enrich Item Checkout dengan Harga Terbaru]
+
+    F --> G[Tampil Halaman Checkout]
+
+    G --> H[Tampil Ringkasan Item Pesanan]
+    G --> I[Tampil Pilihan Kurir]
+    G --> J{Voucher Terpasang dari Keranjang?}
+    J -->|Ya| K[Tampil Badge Promo + Jumlah Hemat]
+    J -->|Tidak| L[Tampil Banner Kembali ke Keranjang untuk Masukkan Promo]
+
+    G --> M[Isi Nama Penerima]
+    G --> N[Pilih Metode Pengiriman]
+    N --> O{Pilihan Kurir}
+    O -->|Ambil Sendiri| P[Ongkir = Rp 0]
+    O -->|JNE Reguler| Q[Ongkir = Rp 15.000]
+    O -->|GoSend Instant| R[Ongkir = Rp 15.000]
+
+    G --> S[Kalkulasi Total Tagihan]
+    S --> T[Subtotal + Pajak 10persen + Ongkir - Diskon Voucher]
+
+    G --> U[Pilih Metode Pembayaran]
+    U --> V[Hanya COD yang Aktif]
+
+    G --> W[Klik Bayar Sekarang]
+    W --> X{Session Login Ada?}
+    X -->|Tidak| Y[Toast Error: Silakan Login]
+    Y --> G
+    X -->|Ya| Z{Nama Penerima Diisi?}
+    Z -->|Tidak| AA[Toast Error: Nama penerima kosong]
+    AA --> G
+    Z -->|Ya| AB[Cek Stok Setiap Item ke Supabase]
+    AB --> AC{Ada Item Stok Habis?}
+    AC -->|Ya| AD[Toast Error: Daftar Nama Item]
+    AD --> G
+    AC -->|Tidak| AE[INSERT ke Tabel orders Supabase]
+    AE --> AF{Insert Berhasil?}
+    AF -->|Gagal| AG[Toast Error Buat Pesanan Gagal]
+    AG --> G
+    AF -->|Berhasil| AH[INSERT ke Tabel order_items]
+    AH --> AI[UPDATE Stok Setiap Produk]
+    AI --> AJ[INSERT Notifikasi Pesanan Baru ke Admin]
+    AJ --> AK[Hapus Item Checkout dari Keranjang]
+    AK --> AL[Hapus Voucher yang Dipakai]
+    AL --> AM[Toast Sukses: Pesanan Berhasil Dibuat]
+    AM --> AN[Redirect ke /profile]
+
+    %% Menambahkan oval End pada titik akhir
+    D --> Z_END([End])
+    H --> Z_END([End])
+    I --> Z_END([End])
+    K --> Z_END([End])
+    L --> Z_END([End])
+    M --> Z_END([End])
+    P --> Z_END([End])
+    Q --> Z_END([End])
+    R --> Z_END([End])
+    T --> Z_END([End])
+    V --> Z_END([End])
+    AN --> Z_END([End])

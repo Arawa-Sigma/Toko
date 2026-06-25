@@ -1,0 +1,66 @@
+flowchart TD
+    A([Start]) --> B[Buka /auth]
+    B --> C{Pilih Mode}
+    C -->|Login| D[Form Login]
+    C -->|Daftar| E[Form Registrasi]
+    C -->|Google| F[signInWithOAuth Google]
+
+    %% LOGIN FLOW
+    D --> G[Input Email + Password]
+    G --> H{Validasi Client}
+    H -->|Email bukan @gmail.com| I[Error: Gunakan akun Gmail]
+    H -->|Password kosong| J[Error: Password wajib diisi]
+    I --> G
+    J --> G
+    H -->|Valid| K[supabase.auth.signInWithPassword]
+    K --> L{Supabase Response}
+    L -->|Error / Salah| M[Toast Error: Email atau Password salah]
+    M --> D
+    L -->|Berhasil| N[Simpan Session ke Zustand Store]
+    N --> O{Cek user_metadata.role}
+    O -->|role === owner| P[Redirect ke /dashboard]
+    O -->|role !== owner atau tidak ada| Q[Redirect ke / - Etalase]
+
+    %% REGISTER FLOW
+    E --> R[Input Nama + Email + Password]
+    R --> S{Validasi Client-Side}
+    S -->|Nama kosong| T[Error: Nama wajib diisi]
+    S -->|Email bukan @gmail.com| U[Error: Gunakan @gmail.com]
+    S -->|Password kurang dari 8 karakter| V[Error: Min 8 karakter]
+    S -->|Tanpa huruf kapital| W[Error: Harus ada huruf kapital]
+    S -->|Tanpa angka| X[Error: Harus ada angka]
+    S -->|Tanpa simbol| Y[Error: Harus ada simbol]
+    T --> R
+    U --> R
+    V --> R
+    W --> R
+    X --> R
+    Y --> R
+    S -->|Semua Valid| Z[supabase.auth.signUp + full_name metadata]
+    Z --> AA{Supabase Response}
+    AA -->|Error| AB[Toast Error Pendaftaran Gagal]
+    AB --> E
+    AA -->|data.session langsung ada| AC[Simpan Session, Toast Selamat Datang]
+    AC --> Q
+    AA -->|Perlu Verifikasi Email| AD[Toast: Periksa email Anda]
+    AD --> AE[Reset Form, Kembali ke mode Login]
+
+    %% GOOGLE OAUTH FLOW
+    F --> AF[supabase.auth.signInWithOAuth provider=google]
+    AF --> AG{Error OAuth?}
+    AG -->|Ya| AH[Toast Error Google Login]
+    AH --> B
+    AG -->|Tidak| AI[Redirect ke Google Consent Screen]
+    AI --> AJ[Google Redirect ke /auth/callback]
+    AJ --> AK[Supabase Exchange Code for Session]
+    AK --> AL{Session Valid?}
+    AL -->|Tidak| AM[Redirect /auth?error=CouldNotAuthenticate]
+    AM --> AN[Toast Error Login]
+    AN --> B
+    AL -->|Ya| AO[Simpan Session]
+    AO --> O
+
+    %% Menambahkan oval End pada titik akhir
+    P --> Z_END([End])
+    Q --> Z_END([End])
+    AE --> Z_END([End])
