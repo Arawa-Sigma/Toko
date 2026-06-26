@@ -1,6 +1,7 @@
 "use client"
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import packageJson from '../../package.json'
 
 export default function Footer() {
   const pathname = usePathname()
@@ -73,7 +74,8 @@ export default function Footer() {
       </div>
 
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '60px', paddingTop: '24px', textAlign: 'center', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', fontWeight: 500 }}>
-        &copy; {new Date().getFullYear()} SembakoBerkah. All rights reserved.
+        <div>&copy; {new Date().getFullYear()} SembakoBerkah. All rights reserved.</div>
+        <div style={{ marginTop: '6px', fontSize: '0.75rem', opacity: 0.6 }}>v{packageJson.version}</div>
       </div>
       <style dangerouslySetInnerHTML={{__html: `
         @media (max-width: 480px) {
