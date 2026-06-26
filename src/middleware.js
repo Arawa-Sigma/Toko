@@ -48,7 +48,7 @@ export async function middleware(request) {
        role = data?.role
     }
 
-    if (role !== 'owner') {
+    if (role?.toLowerCase() !== 'owner') {
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)
