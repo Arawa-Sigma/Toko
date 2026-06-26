@@ -2,7 +2,7 @@ flowchart TD
     A([Start]) --> B[Buka /checkout]
     B --> C{selectedForCheckout Kosong?}
     C -->|Ya| D[Redirect Paksa ke /keranjang]
-    C -->|Tidak| E[Fetch Semua Produk dari Supabase]
+    C -->|Tidak| E[Fetch Hanya Produk Checkout dari Supabase]
     E --> F[Enrich Item Checkout dengan Harga Terbaru]
 
     F --> G[Tampil Halaman Checkout]
@@ -22,7 +22,7 @@ flowchart TD
     N --> O{Pilihan Kurir}
     O -->|Ambil Sendiri| P[Ongkir = Rp 0]
     O -->|JNE Reguler| Q[Ongkir = Rp 15.000]
-    O -->|GoSend Instant| R[Ongkir = Rp 15.000]
+    O -->|GoSend Instant| R[Ongkir = Rp 25.000]
 
     G --> S[Kalkulasi Total Tagihan]
     S --> T[Subtotal + Pajak 10persen + Ongkir - Diskon Voucher]

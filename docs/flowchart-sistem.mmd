@@ -27,7 +27,7 @@ flowchart TD
     R --> S[Supabase Auth Callback]
     S --> M
 
-    M -->|Role: owner / admin / logistik| T[Dashboard Admin /dashboard]
+    M -->|Role: owner| T[Dashboard Admin /dashboard]
     M -->|Role: customer / tidak ada| U[Halaman Utama / Etalase]
 
     D -->|Ya| U

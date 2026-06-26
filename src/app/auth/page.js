@@ -58,7 +58,7 @@ export default function AuthPage() {
 
   const validateEmail = (email) => {
     if (!email) return "Email wajib diisi"
-    if (!email.endsWith("@gmail.com")) return "Gunakan akun @gmail.com"
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Format email tidak valid"
     return ""
   }
 
@@ -141,11 +141,16 @@ export default function AuthPage() {
       return
     }
 
+    let role = data.session?.user?.user_metadata?.role
+    if (data.session?.user?.id) {
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.session.user.id).single()
+        if (profile?.role) role = profile.role
+    }
+
     showToast(`Berhasil login!`, "success")
     
     setTimeout(() => {
-        const role = data.session?.user?.user_metadata?.role
-        if (role === 'owner') {
+        if (role?.toLowerCase() === 'owner') {
             router.push('/dashboard') 
         } else {
             router.push('/') 

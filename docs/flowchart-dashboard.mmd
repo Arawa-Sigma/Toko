@@ -1,7 +1,7 @@
 flowchart TD
     A([Start]) --> B[Buka /dashboard]
-    B --> C{Session Valid + Role = owner/admin/logistik?}
-    C -->|Tidak| D[Redirect ke /auth]
+    B --> C{Middleware Check: Session & Role = owner?}
+    C -->|Tidak (Belum Login / Bukan Owner)| D[Redirect ke /auth atau /]
     C -->|Ya| E[Dashboard Layout dengan Sidebar]
 
     E --> F[Fetch Unread Notifications Count dari Supabase]

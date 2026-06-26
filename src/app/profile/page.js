@@ -68,6 +68,8 @@ export default function ProfilePage() {
     // Password States
     const [password, setPassword] = useState("")
     const [confirmPassword, setConfirmPassword] = useState("")
+    const [showPassword, setShowPassword] = useState(false)
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
     // Cropper States
     const [cropModalOpen, setCropModalOpen] = useState(false)
@@ -98,10 +100,9 @@ export default function ProfilePage() {
             
             async function fetchUserOrders() {
                 const supabase = createClient()
-                const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false })
+                const { data } = await supabase.from('orders').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false })
                 if (data) {
-                    const myOrders = data.filter(o => o.buyer_name === (meta.full_name || meta.username) || o.user_id === session.user.id)
-                    setUserOrders(myOrders)
+                    setUserOrders(data)
                 }
                 setLoadingOrders(false)
             }
@@ -332,13 +333,23 @@ export default function ProfilePage() {
         }
     }
 
+    const validatePassword = (pass) => {
+        if (!pass) return "Password wajib diisi"
+        if (pass.length < 8) return "Password minimal 8 karakter"
+        if (!/[A-Z]/.test(pass)) return "Password harus mengandung huruf kapital"
+        if (!/\d/.test(pass)) return "Password harus mengandung angka"
+        if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/.test(pass)) return "Password harus mengandung simbol"
+        return ""
+    }
+
     const handlePasswordChange = async () => {
         if (password !== confirmPassword) {
             showToast("Password dan konfirmasi tidak cocok!", "error")
             return
         }
-        if (password.length < 6) {
-            showToast("Password minimal 6 karakter!", "error")
+        const passErr = validatePassword(password)
+        if (passErr) {
+            showToast(passErr, "error")
             return
         }
         try {
@@ -422,6 +433,7 @@ export default function ProfilePage() {
     function getStatusBadge(status) {
         switch(status) {
             case 'Selesai':
+            case 'Barang Sudah Sampai':
             case 'Dikirim':
                 return <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '999px', background: '#ecfdf5', color: '#10b981', border: '1px solid #a7f3d0', fontSize: '0.7rem', fontWeight: 700 }}>{status}</span>
             case 'Dibatalkan':
@@ -737,14 +749,20 @@ export default function ProfilePage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '600px' }}>
                             <div className="profile-form-row">
                                 <div className="profile-form-label">Password Baru</div>
-                                <div className="profile-form-input">
-                                    <input type="password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 6 karakter" style={{ width: '100%', maxWidth: '300px' }} />
+                                <div className="profile-form-input" style={{ position: 'relative', width: '100%', maxWidth: '300px' }}>
+                                    <input type={showPassword ? "text" : "password"} className="input" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 kar, kapital, angka, simbol" style={{ width: '100%', paddingRight: '40px' }} />
+                                    <button type="button" onClick={() => setShowPassword(v => !v)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>
+                                        <i className={`fas fa-eye${showPassword ? '-slash' : ''}`}></i>
+                                    </button>
                                 </div>
                             </div>
                             <div className="profile-form-row">
                                 <div className="profile-form-label">Konfirmasi Password</div>
-                                <div className="profile-form-input">
-                                    <input type="password" className="input" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Ketik ulang password baru" style={{ width: '100%', maxWidth: '300px' }} />
+                                <div className="profile-form-input" style={{ position: 'relative', width: '100%', maxWidth: '300px' }}>
+                                    <input type={showConfirmPassword ? "text" : "password"} className="input" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Ketik ulang password baru" style={{ width: '100%', paddingRight: '40px' }} />
+                                    <button type="button" onClick={() => setShowConfirmPassword(v => !v)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>
+                                        <i className={`fas fa-eye${showConfirmPassword ? '-slash' : ''}`}></i>
+                                    </button>
                                 </div>
                             </div>
                             <div className="profile-form-row" style={{ marginTop: '10px' }}>
@@ -766,7 +784,7 @@ export default function ProfilePage() {
 
                         {/* Order Status Tabs */}
                         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f1f5f9' }}>
-                            {['Semua', 'Belum Bayar', 'Sedang Dikemas', 'Dikirim', 'Selesai', 'Dibatalkan', 'Pengembalian Barang'].map(stat => (
+                            {['Semua', 'Belum Bayar', 'Sedang Dikemas', 'Dikirim', 'Barang Sudah Sampai', 'Selesai', 'Dibatalkan', 'Pengembalian Barang'].map(stat => (
                                 <button 
                                     key={stat}
                                     onClick={() => setOrderFilterStatus(stat)}

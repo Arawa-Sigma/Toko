@@ -6,7 +6,6 @@ export const useStore = create(
     (set, get) => ({
       // Authentication State
       session: null,
-      session: null,
       setSession: (user) => {
          set({ session: user })
          if (user) {
@@ -16,7 +15,7 @@ export const useStore = create(
             set({ cart: [], wishlist: [], selectedForCheckout: [], appliedVoucher: null })
          }
       },
-      logout: () => set({ session: null }),
+      logout: () => get().setSession(null),
 
       // UI State
       landingCategory: 'Semua Barang',
@@ -70,15 +69,29 @@ export const useStore = create(
           if (existing && existing.dbId) {
             await supabase.from('cart_items').update({ qty: existing.qty + qty }).eq('id', existing.dbId);
           } else {
-            const { data, error } = await supabase.from('cart_items').insert([{
-              user_id: session.user.id,
-              product_id: product.id,
-              variant_id: variant ? variant.id : null,
-              qty: existing ? existing.qty + qty : qty
-            }]).select().single();
-            
-            if (data) {
-               set((state) => ({ cart: state.cart.map(i => (i.uniqueId || i.productId) === uniqueId ? { ...i, dbId: data.id } : i) }));
+            let dbItem = null;
+            if (existing) {
+               const query = supabase.from('cart_items').select('id').eq('user_id', session.user.id).eq('product_id', product.id);
+               if (variant) query.eq('variant_id', variant.id);
+               else query.is('variant_id', null);
+               const { data } = await query.maybeSingle();
+               dbItem = data;
+            }
+
+            if (dbItem) {
+               await supabase.from('cart_items').update({ qty: existing.qty + qty }).eq('id', dbItem.id);
+               set((state) => ({ cart: state.cart.map(i => (i.uniqueId || i.productId) === uniqueId ? { ...i, dbId: dbItem.id } : i) }));
+            } else {
+                const { data, error } = await supabase.from('cart_items').insert([{
+                  user_id: session.user.id,
+                  product_id: product.id,
+                  variant_id: variant ? variant.id : null,
+                  qty: existing ? existing.qty + qty : qty
+                }]).select().single();
+                
+                if (data) {
+                   set((state) => ({ cart: state.cart.map(i => (i.uniqueId || i.productId) === uniqueId ? { ...i, dbId: data.id } : i) }));
+                }
             }
           }
         } catch (e) { console.error("Sync error", e); }

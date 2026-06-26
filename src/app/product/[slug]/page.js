@@ -4,18 +4,15 @@ import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { useStore, useUIStore } from "@/lib/store"
 import { createClient } from "@/lib/supabaseClient"
+import { makeSlug } from "@/lib/utils"
 import Loading from "@/app/loading"
 
 export default function ProductDetail() {
     const router = useRouter()
     const params = useParams()
-    const { slug } = params
 
-    const makeSlug = (name, id) => {
-        if (!name) return `product-${id}`;
-        const cleanName = name.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-        return `${cleanName}-${id}`
-    }
+
+    const { slug } = params
     const [product, setProduct] = useState(null)
     const [reviews, setReviews] = useState([])
     const [relatedProducts, setRelatedProducts] = useState([])

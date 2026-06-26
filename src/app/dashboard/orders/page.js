@@ -46,6 +46,7 @@ export default function OrdersPage() {
     function getStatusBadge(status) {
         switch(status) {
             case 'Selesai':
+            case 'Barang Sudah Sampai':
             case 'Dikirim':
                 return <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '999px', background: '#ecfdf5', color: '#10b981', border: '1px solid #a7f3d0', fontSize: '0.7rem', fontWeight: 700 }}>{status}</span>
             case 'Dibatalkan':
@@ -74,7 +75,7 @@ export default function OrdersPage() {
                     />
                 </div>
                 <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-                    {['Semua', 'Belum Bayar', 'Sedang Dikemas', 'Dikirim', 'Selesai', 'Dibatalkan', 'Pengembalian Barang'].map(stat => (
+                    {['Semua', 'Belum Bayar', 'Sedang Dikemas', 'Dikirim', 'Barang Sudah Sampai', 'Selesai', 'Dibatalkan', 'Pengembalian Barang'].map(stat => (
                         <button 
                             key={stat}
                             onClick={() => setFilterStatus(stat)}
@@ -153,6 +154,7 @@ export default function OrdersPage() {
                                             <option value="Belum Bayar">Belum Bayar</option>
                                             <option value="Sedang Dikemas">Sedang Dikemas</option>
                                             <option value="Dikirim">Tandai Dikirim</option>
+                                            <option value="Barang Sudah Sampai">Barang Sudah Sampai</option>
                                             <option value="Selesai">Tandai Selesai</option>
                                             <option value="Dibatalkan">Batalkan Pesanan</option>
                                             <option value="Pengembalian Barang">Pengembalian Barang</option>

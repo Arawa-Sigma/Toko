@@ -1,12 +1,39 @@
 "use client"
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabaseClient'
+import { useStore } from '@/lib/store'
 
 export default function InvoicePage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
-  // dummy invoices for now until connected to DB
   const [invoices, setInvoices] = useState([])
+  const [loading, setLoading] = useState(true)
+  const { session } = useStore()
+
+  useEffect(() => {
+    if (session?.user?.id) {
+        const fetchOrders = async () => {
+            const supabase = createClient()
+            const { data, error } = await supabase.from('orders').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false })
+            if (data) {
+                const formattedInvoices = data.map(order => ({
+                    id: order.id,
+                    buyerName: order.buyer_name || 'Pelanggan',
+                    courier: order.courier || 'Ambil Sendiri',
+                    status: order.status,
+                    total: order.total_amount,
+                    paymentMethod: order.payment_method || 'Transfer / COD'
+                }))
+                setInvoices(formattedInvoices)
+            }
+            setLoading(false)
+        }
+        fetchOrders()
+    } else {
+        setLoading(false)
+    }
+  }, [session])
 
   const filteredInvoices = invoices.filter(inv => {
       if (statusFilter && inv.status !== statusFilter) return false
@@ -51,9 +78,10 @@ export default function InvoicePage() {
                   >
                       <option value="">Semua Status</option>
                       <option value="Menunggu">Menunggu</option>
-                      <option value="Diproses">Diproses</option>
-                      <option value="Dikemas">Dikemas</option>
-                      <option value="Siap Dikirim">Siap Dikirim</option>
+                      <option value="Sedang Dikemas">Sedang Dikemas</option>
+                      <option value="Dikirim">Dikirim</option>
+                      <option value="Barang Sudah Sampai">Barang Sudah Sampai</option>
+                      <option value="Selesai">Selesai</option>
                   </select>
               </div>
               <div style={{maxHeight:'520px', overflow:'auto'}}>
@@ -70,14 +98,18 @@ export default function InvoicePage() {
                           </tr>
                       </thead>
                       <tbody id="monitorTbody">
-                          {filteredInvoices.length === 0 ? (
+                          {loading ? (
+                              <tr>
+                                  <td colSpan="7" style={{textAlign:'center', padding:'20px'}}>Memuat data...</td>
+                              </tr>
+                          ) : filteredInvoices.length === 0 ? (
                               <tr>
                                   <td colSpan="7" style={{textAlign:'center', padding:'20px'}}>Belum ada data transaksi.</td>
                               </tr>
                           ) : (
                               filteredInvoices.map(inv => (
                                   <tr key={inv.id}>
-                                      <td><strong>{inv.id}</strong></td>
+                                      <td><strong>{inv.id?.split('-')[0] || inv.id}</strong></td>
                                       <td>{inv.buyerName}</td>
                                       <td>{inv.courier}</td>
                                       <td><span className="badge">{inv.status}</span></td>

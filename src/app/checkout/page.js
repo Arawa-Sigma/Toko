@@ -18,6 +18,7 @@ export default function CheckoutPage() {
     const [courier, setCourier] = useState("Ambil Sendiri")
     const [buyerName, setBuyerName] = useState("")
     const [isProcessing, setIsProcessing] = useState(false)
+    const [useInsurance, setUseInsurance] = useState(true)
 
     const addresses = session?.user?.user_metadata?.addresses || []
     const [selectedAddressIndex, setSelectedAddressIndex] = useState(0)
@@ -99,12 +100,18 @@ export default function CheckoutPage() {
         }
 
         async function fetchProducts() {
-            const { data } = await supabase.from('products').select('*')
+            const checkoutItemIds = cart
+                .filter(item => selectedForCheckout.includes(item.uniqueId || item.productId))
+                .map(item => item.productId)
+                
+            if (checkoutItemIds.length === 0) return
+            
+            const { data } = await supabase.from('products').select('*').in('id', checkoutItemIds)
             if (data) setProducts(data)
             setLoadingProducts(false)
         }
         fetchProducts()
-    }, [selectedForCheckout, router])
+    }, [selectedForCheckout, router, cart])
 
     const checkoutItems = cart.filter(item => selectedForCheckout.includes(item.uniqueId || item.productId))
 
@@ -127,8 +134,11 @@ export default function CheckoutPage() {
     const tax = subtotal * 0.10
 
     let adminFee = 0
-
-    let shippingFee = courier === "Ambil Sendiri" ? 0 : 15000 // Simplified flat fee for now
+    let insuranceFee = useInsurance ? 2000 : 0
+    let shippingFee = 0
+    if (courier === "JNE") shippingFee = 15000
+    else if (courier === "GoSend") shippingFee = 25000
+    else if (courier !== "Ambil Sendiri") shippingFee = 15000 // Default for others
     
     let discount = 0
     if (appliedVoucher) {
@@ -144,12 +154,22 @@ export default function CheckoutPage() {
         }
     }
 
-    let total = subtotal + tax + shippingFee + adminFee - discount
+    let total = subtotal + tax + shippingFee + adminFee + insuranceFee - discount
     if (total < 0) total = 0
 
     const handleCheckout = async () => {
         if (!session?.user?.id) {
             showToast("Silakan login terlebih dahulu untuk membuat pesanan.", "error")
+            return
+        }
+
+        if (enrichedCheckout.length === 0) {
+            showToast("Tidak ada barang untuk di checkout!", "error")
+            return
+        }
+
+        if (courier !== "Ambil Sendiri" && (!addresses || addresses.length === 0 || !addresses[selectedAddressIndex])) {
+            showToast("Alamat pengiriman belum dipilih!", "error")
             return
         }
 
@@ -319,8 +339,8 @@ export default function CheckoutPage() {
                                 </div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
-                                <input type="checkbox" checked readOnly style={{ accentColor: '#10b981', width: '18px', height: '18px' }} />
-                                <span style={{ fontSize: '0.9rem', color: 'var(--dark)' }}>Pakai Asuransi Pengiriman <span style={{ color: 'var(--muted)' }}>(Rp 0)</span></span>
+                                <input type="checkbox" checked={useInsurance} onChange={(e) => setUseInsurance(e.target.checked)} style={{ accentColor: '#10b981', width: '18px', height: '18px', cursor: 'pointer' }} />
+                                <span style={{ fontSize: '0.9rem', color: 'var(--dark)' }}>Pakai Asuransi Pengiriman <span style={{ color: 'var(--muted)' }}>(Rp 2.000)</span></span>
                             </div>
                             <div style={{ marginTop: '16px' }}>
                                 <input className="input" placeholder="Kasih Catatan" style={{ border: 'none', borderBottom: '1px solid #e2e8f0', borderRadius: 0, padding: '8px 0', fontSize: '0.95rem' }} />
@@ -389,6 +409,11 @@ export default function CheckoutPage() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--muted)', fontSize: '0.95rem' }}>
                                 <span>Total Ongkos Kirim</span><span>Rp {shippingFee.toLocaleString('id-ID')}</span>
                             </div>
+                            {useInsurance && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--muted)', fontSize: '0.95rem' }}>
+                                    <span>Asuransi Pengiriman</span><span>Rp {insuranceFee.toLocaleString('id-ID')}</span>
+                                </div>
+                            )}
                             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--muted)', fontSize: '0.95rem', cursor: 'pointer' }}>
                                 <span>Total Pajak/Layanan</span><span>Rp {tax.toLocaleString('id-ID')}</span>
                             </div>

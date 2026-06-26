@@ -8,7 +8,7 @@ flowchart TD
     %% LOGIN FLOW
     D --> G[Input Email + Password]
     G --> H{Validasi Client}
-    H -->|Email bukan @gmail.com| I[Error: Gunakan akun Gmail]
+    H -->|Email format tidak valid| I[Error: Format email tidak valid]
     H -->|Password kosong| J[Error: Password wajib diisi]
     I --> G
     J --> G
@@ -25,7 +25,7 @@ flowchart TD
     E --> R[Input Nama + Email + Password]
     R --> S{Validasi Client-Side}
     S -->|Nama kosong| T[Error: Nama wajib diisi]
-    S -->|Email bukan @gmail.com| U[Error: Gunakan @gmail.com]
+    S -->|Email format tidak valid| U[Error: Format email tidak valid]
     S -->|Password kurang dari 8 karakter| V[Error: Min 8 karakter]
     S -->|Tanpa huruf kapital| W[Error: Harus ada huruf kapital]
     S -->|Tanpa angka| X[Error: Harus ada angka]

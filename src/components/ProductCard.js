@@ -1,7 +1,7 @@
 "use client"
 import { useStore, useUIStore } from "@/lib/store"
 import { useRouter } from 'next/navigation'
-
+import { makeSlug } from "@/lib/utils"
 export default function ProductCard({ product, onQuickBuy }) {
     const p = product;
     const router = useRouter()
@@ -9,10 +9,6 @@ export default function ProductCard({ product, onQuickBuy }) {
     const showToast = useUIStore((state) => state.showToast)
     
     const rupiah = (num) => "Rp " + Number(num).toLocaleString('id-ID')
-    const makeSlug = (name, id) => {
-        if (!name) return String(id);
-        return name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + id;
-    }
 
     const hasDisc = Number(p.discount || 0) > 0
     const price = Number(p.price || 0)
