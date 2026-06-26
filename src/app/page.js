@@ -365,20 +365,24 @@ export default function Storefront() {
                 </div>
 
                 {/* Actions */}
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <button className="btn" style={{ flex: 1, padding: '12px', borderRadius: '14px', border: '2px solid var(--primary)', background: '#fff', color: 'var(--primary)', fontWeight: 800, fontSize: '0.9rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }} onClick={() => {
-                        addToCart(quickBuyProduct, quickBuyQty, quickBuyVariant);
-                        showToast("Produk dimasukkan ke keranjang!", "success");
-                        setQuickBuyProduct(null);
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="btn" style={{ flex: 1, padding: '12px 8px', borderRadius: '12px', border: '2px solid var(--primary)', background: '#fff', color: 'var(--primary)', fontWeight: 800, fontSize: '0.85rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }} onClick={async () => {
+                        const success = await addToCart(quickBuyProduct, quickBuyQty, quickBuyVariant);
+                        if (success) {
+                            showToast("Produk dimasukkan ke keranjang!", "success");
+                            setQuickBuyProduct(null);
+                        }
                     }}>
-                        <i className="fas fa-cart-plus"></i> + Keranjang
+                        <i className="fas fa-cart-plus"></i> Keranjang
                     </button>
-                    <button className="btn btnPrimary" style={{ flex: 1, padding: '12px', borderRadius: '14px', fontWeight: 800, fontSize: '0.9rem', border: '2px solid var(--primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }} onClick={() => {
-                        addToCart(quickBuyProduct, quickBuyQty, quickBuyVariant);
-                        setQuickBuyProduct(null);
-                        router.push('/keranjang');
+                    <button className="btn btnPrimary" style={{ flex: 1, padding: '12px 8px', borderRadius: '12px', fontWeight: 800, fontSize: '0.85rem', border: '2px solid var(--primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }} onClick={async () => {
+                        const success = await addToCart(quickBuyProduct, quickBuyQty, quickBuyVariant);
+                        if (success) {
+                            setQuickBuyProduct(null);
+                            router.push('/keranjang');
+                        }
                     }}>
-                        <i className="fas fa-shopping-basket"></i> Beli Langsung
+                        <i className="fas fa-shopping-bag"></i> Beli Langsung
                     </button>
                 </div>
             </div>

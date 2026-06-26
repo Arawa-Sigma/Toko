@@ -27,19 +27,15 @@ export default function ProductCard({ product, onQuickBuy }) {
     const emptyStars = 5 - filledStars
     const stars = "★".repeat(filledStars) + "☆".repeat(emptyStars)
 
-    const handleQuickBuy = (e) => {
+    const handleQuickBuy = async (e) => {
         e.stopPropagation();
         if (onQuickBuy) {
             onQuickBuy(p);
         } else if (p.variants && p.variants.length > 0) {
             router.push(`/product/${p.slug || makeSlug(p.name, p.id)}`)
         } else {
-            addToCart({
-                productId: p.id,
-                qty: 1,
-                variant: null
-            })
-            showToast("Berhasil dimasukkan ke keranjang!", "success")
+            const success = await addToCart(p, 1, null)
+            if (success) showToast("Berhasil dimasukkan ke keranjang!", "success")
         }
     }
 
@@ -48,7 +44,7 @@ export default function ProductCard({ product, onQuickBuy }) {
         {hasDisc && <div className="tag">Diskon {p.discount}%</div>}
         <button 
           className={`wish ${isWish ? "active" : ""}`} 
-          onClick={(e) => { e.stopPropagation(); toggleWishlist(p.id) }} 
+          onClick={async (e) => { e.stopPropagation(); await toggleWishlist(p.id) }} 
           title="Wishlist"
         >
           <i className="fas fa-heart"></i>

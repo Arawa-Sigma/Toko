@@ -1,6 +1,6 @@
 flowchart TD
     A([Start]) --> B[Buka /dashboard]
-    B --> C{Session Valid + Role = owner?}
+    B --> C{Session Valid + Role = owner/admin/logistik?}
     C -->|Tidak| D[Redirect ke /auth]
     C -->|Ya| E[Dashboard Layout dengan Sidebar]
 
@@ -86,15 +86,12 @@ flowchart TD
 
     %% PENGGUNA
     N --> N1[Fetch users via RPC get_all_users atau fallback profiles]
-    N1 --> N2[Fetch role_requests dari Supabase]
-    N2 --> N3{Tab Aktif}
-    N3 -->|Pengguna| N4[Tampil Tabel Semua Pengguna]
-    N3 -->|Permintaan Owner| N5[Tampil Daftar Role Request]
-    N5 --> N6{Aksi}
-    N6 -->|Approve| N7[UPDATE role_requests.status = Approved]
-    N7 --> N8[UPDATE profiles.role = Owner]
-    N8 --> N9[Alert: User akan jadi Owner saat login]
-    N6 -->|Reject| N10[UPDATE role_requests.status = Rejected]
+    N1 --> N4[Tampil Tabel Semua Pengguna]
+    N4 --> N2[Filter dengan Search Bar]
+    N2 --> N3{Aksi Pengguna}
+    N3 -->|Ganti Role Manual| N5[UPDATE profiles.role = Owner/Admin/Logistik/Customer]
+    N3 -->|Edit Nama & Email| N6[UPDATE profiles.name & email]
+    N3 -->|Hapus Pengguna| N7[DELETE dari Tabel profiles]
 
     %% DISKON
     O --> O1[Fetch products + vouchers dari Supabase]
@@ -158,8 +155,9 @@ flowchart TD
     L7 --> Z_END([End])
     L9 --> Z_END([End])
     N4 --> Z_END([End])
-    N9 --> Z_END([End])
-    N10 --> Z_END([End])
+    N5 --> Z_END([End])
+    N6 --> Z_END([End])
+    N7 --> Z_END([End])
     O6 --> Z_END([End])
     O7 --> Z_END([End])
     O9 --> Z_END([End])

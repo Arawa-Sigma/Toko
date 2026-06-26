@@ -15,6 +15,20 @@ export default function ProfilePage() {
     
     // Tab State
     const [activeTab, setActiveTab] = useState("dashboard")
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+    const handleTabChange = (tab) => {
+        setActiveTab(tab)
+        setIsSidebarOpen(false)
+    }
+
+    const tabNames = {
+        'dashboard': 'Dashboard',
+        'riwayat': 'Riwayat Pesanan',
+        'profil': 'Pengaturan Profil',
+        'alamat': 'Buku Alamat',
+        'password': 'Ubah Password',
+        'notifikasi': 'Notifikasi'
+    }
 
     // Profil Form States
     const [username, setUsername] = useState("")
@@ -66,49 +80,9 @@ export default function ProfilePage() {
     // Status States
     const [uploading, setUploading] = useState(false)
     const [saving, setSaving] = useState(false)
-    const [roleRequestStatus, setRoleRequestStatus] = useState(null)
-    const [roleRequestId, setRoleRequestId] = useState(null)
     const fileInputRef = useRef(null)
 
     useEffect(() => {
-        // Fetch role requests status
-        async function fetchRoleRequest(userId) {
-            const supabase = createClient()
-            try {
-                const { data, error } = await supabase
-                    .from('role_requests')
-                    .select('*')
-                    .eq('user_id', userId)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                
-                if (data && data.length > 0) {
-                    const req = data[0]
-                    setRoleRequestStatus(req.status)
-                    setRoleRequestId(req.id)
-                    
-                    // AUTO CLAIM if Approved
-                    if (req.status === 'Approved') {
-                        const { error: updateErr } = await supabase.auth.updateUser({
-                            data: { role: 'Owner' }
-                        })
-                        if (!updateErr) {
-                            // Sync profile and update session
-                            await supabase.from('profiles').update({ role: 'Owner' }).eq('id', userId)
-                            const { data: sData } = await supabase.auth.getSession()
-                            if (sData?.session) setSession(sData.session)
-                            
-                            // Delete request after claiming
-                            await supabase.from('role_requests').delete().eq('id', req.id)
-                            setRoleRequestStatus(null)
-                            showToast("Persetujuan Role Owner Anda telah diaktifkan!", "success")
-                        }
-                    }
-                }
-            } catch(e) {
-                console.error("Gagal fetch role request", e)
-            }
-        }
 
         if (session?.user) {
             const meta = session.user.user_metadata || {}
@@ -133,7 +107,6 @@ export default function ProfilePage() {
             }
             
             fetchUserOrders()
-            fetchRoleRequest(session.user.id)
         } else {
             setLoadingOrders(false)
         }
@@ -262,25 +235,6 @@ export default function ProfilePage() {
             showToast(`Gagal memperbarui profil: ${error.message}`, "error")
         } finally {
             setSaving(false)
-        }
-    }
-
-    const handleRequestOwner = async () => {
-        if (!confirm("Kirim permintaan akses Owner ke Admin?")) return
-        try {
-            const supabase = createClient()
-            const { error } = await supabase.from('role_requests').insert({
-                user_id: session.user.id,
-                user_name: fullName || username || 'Pengguna',
-                status: 'Pending'
-            })
-            if (error) throw error
-
-            setRoleRequestStatus('Pending')
-            showToast("Permintaan berhasil dikirim. Menunggu persetujuan Admin.", "success")
-        } catch (error) {
-            console.error("Error requesting owner:", error)
-            showToast(`Gagal: ${error.message}`, "error")
         }
     }
 
@@ -495,14 +449,23 @@ export default function ProfilePage() {
     const maskedEmail = email ? email.replace(/(.{2})(.*)(?=@)/, (match, p1, p2) => p1 + '*'.repeat(p2.length)) : "";
 
     return (
-        <main className="contentArea" id="mainContent" style={{ width: '100%', maxWidth: '1200px', margin: '40px auto', display: 'flex', gap: '40px', padding: '0 20px', alignItems: 'flex-start' }}>
+        <main className="profile-container contentArea" id="mainContent">
+            <div className="profile-mobile-header" style={{ display: 'none', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                <button onClick={() => setIsSidebarOpen(true)} className="btn" style={{ padding: '8px 12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px' }}>
+                   <i className="fas fa-bars"></i>
+                </button>
+                <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--dark)' }}>{tabNames[activeTab] || 'Profil Saya'}</h2>
+            </div>
+            
+            <div className={`profile-overlay ${isSidebarOpen ? 'open' : ''}`} onClick={() => setIsSidebarOpen(false)}></div>
+
             {/* SIDEBAR */}
-            <aside style={{ width: '250px', flexShrink: 0, paddingRight: '20px', borderRight: '1px solid #e2e8f0', minHeight: '60vh' }}>
+            <aside className={`profile-sidebar ${isSidebarOpen ? 'open' : ''}`}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
                     <img src={avatarUrl || "/people.png"} alt="Avatar" onError={(e) => { e.target.onerror = null; e.target.src = "/people.png"; }} style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }} />
                     <div>
                         <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--dark)' }}>{username || fullName || 'User'}</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => setActiveTab('profil')}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }} onClick={() => handleTabChange('profil')}>
                             <i className="fas fa-pen"></i> Ubah Profil
                         </div>
                     </div>
@@ -513,7 +476,7 @@ export default function ProfilePage() {
                     <div>
                         <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', paddingLeft: '12px' }}>Overview</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'dashboard' ? '#ecfdf5' : 'transparent', color: activeTab === 'dashboard' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'dashboard' ? 800 : 600 }} onClick={() => setActiveTab('dashboard')}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'dashboard' ? '#ecfdf5' : 'transparent', color: activeTab === 'dashboard' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'dashboard' ? 800 : 600 }} onClick={() => handleTabChange('dashboard')}>
                                 <i className="fas fa-home" style={{ width: '20px', textAlign: 'center', fontSize: '1.1rem' }}></i> Dashboard
                             </div>
                         </div>
@@ -523,7 +486,7 @@ export default function ProfilePage() {
                     <div>
                         <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', paddingLeft: '12px' }}>Transaksi</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'riwayat' ? '#ecfdf5' : 'transparent', color: activeTab === 'riwayat' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'riwayat' ? 800 : 600 }} onClick={() => setActiveTab('riwayat')}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'riwayat' ? '#ecfdf5' : 'transparent', color: activeTab === 'riwayat' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'riwayat' ? 800 : 600 }} onClick={() => handleTabChange('riwayat')}>
                                 <i className="fas fa-clipboard-list" style={{ width: '20px', textAlign: 'center', fontSize: '1.1rem' }}></i> Riwayat Pesanan
                             </div>
                             <Link href="/keranjang" style={{ textDecoration: 'none' }}>
@@ -538,13 +501,13 @@ export default function ProfilePage() {
                     <div>
                         <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', paddingLeft: '12px' }}>Akun Saya</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'profil' ? '#ecfdf5' : 'transparent', color: activeTab === 'profil' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'profil' ? 800 : 600 }} onClick={() => setActiveTab('profil')}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'profil' ? '#ecfdf5' : 'transparent', color: activeTab === 'profil' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'profil' ? 800 : 600 }} onClick={() => handleTabChange('profil')}>
                                 <i className="fas fa-user-edit" style={{ width: '20px', textAlign: 'center', fontSize: '1.1rem' }}></i> Pengaturan Profil
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'alamat' ? '#ecfdf5' : 'transparent', color: activeTab === 'alamat' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'alamat' ? 800 : 600 }} onClick={() => setActiveTab('alamat')}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'alamat' ? '#ecfdf5' : 'transparent', color: activeTab === 'alamat' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'alamat' ? 800 : 600 }} onClick={() => handleTabChange('alamat')}>
                                 <i className="fas fa-map-marked-alt" style={{ width: '20px', textAlign: 'center', fontSize: '1.1rem' }}></i> Buku Alamat
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'password' ? '#ecfdf5' : 'transparent', color: activeTab === 'password' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'password' ? 800 : 600 }} onClick={() => setActiveTab('password')}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'password' ? '#ecfdf5' : 'transparent', color: activeTab === 'password' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'password' ? 800 : 600 }} onClick={() => handleTabChange('password')}>
                                 <i className="fas fa-key" style={{ width: '20px', textAlign: 'center', fontSize: '1.1rem' }}></i> Ubah Password
                             </div>
                         </div>
@@ -554,7 +517,7 @@ export default function ProfilePage() {
                     <div>
                         <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', paddingLeft: '12px' }}>Komunikasi</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'notifikasi' ? '#ecfdf5' : 'transparent', color: activeTab === 'notifikasi' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'notifikasi' ? 800 : 600 }} onClick={() => setActiveTab('notifikasi')}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'notifikasi' ? '#ecfdf5' : 'transparent', color: activeTab === 'notifikasi' ? 'var(--primary)' : 'var(--dark)', fontWeight: activeTab === 'notifikasi' ? 800 : 600 }} onClick={() => handleTabChange('notifikasi')}>
                                 <i className="fas fa-bell" style={{ width: '20px', textAlign: 'center', fontSize: '1.1rem' }}></i> Notifikasi
                             </div>
                         </div>
@@ -563,48 +526,19 @@ export default function ProfilePage() {
             </aside>
 
             {/* MAIN CONTENT */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
                 {activeTab === 'dashboard' && (
                     <>
-                        <div className="card" style={{ padding: '32px', borderRadius: '16px', background: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '20px' }}>
+                        <div className="card profile-content-card" style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '32px' }}>
                             <img src={avatarUrl || "/people.png"} alt="Avatar" onError={(e) => { e.target.onerror = null; e.target.src = "/people.png"; }} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border)' }} />
                             <div>
                                 <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--dark)', margin: '0 0 4px 0' }}>Halo, {fullName || username || 'User'}!</h1>
                                 <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.95rem' }}>Selamat datang di Dashboard Pengguna Anda.</p>
-                                {session?.user?.user_metadata?.role !== 'Owner' && (
-                                    <button 
-                                        onClick={roleRequestStatus === 'Pending' ? null : handleRequestOwner}
-                                        disabled={roleRequestStatus === 'Pending'}
-                                        style={{ 
-                                            marginTop: '12px', 
-                                            padding: '8px 16px', 
-                                            background: roleRequestStatus === 'Pending' ? '#f1f5f9' : '#fef3c7', 
-                                            color: roleRequestStatus === 'Pending' ? '#94a3b8' : '#d97706', 
-                                            border: roleRequestStatus === 'Pending' ? '1px solid #e2e8f0' : '1px solid #fde68a', 
-                                            borderRadius: '8px', 
-                                            fontWeight: 700, 
-                                            fontSize: '0.85rem', 
-                                            cursor: roleRequestStatus === 'Pending' ? 'not-allowed' : 'pointer', 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: '8px', 
-                                            transition: 'all 0.2s' 
-                                        }}
-                                    >
-                                        {roleRequestStatus === 'Pending' ? (
-                                            <><i className="fas fa-hourglass-half"></i> Menunggu Persetujuan Admin...</>
-                                        ) : roleRequestStatus === 'Rejected' ? (
-                                            <><i className="fas fa-times-circle"></i> Permintaan Ditolak (Coba Lagi)</>
-                                        ) : (
-                                            <><i className="fas fa-crown"></i> Request Role Owner</>
-                                        )}
-                                    </button>
-                                )}
                             </div>
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-                            <div className="card" style={{ padding: '24px', borderRadius: '16px', background: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9' }}>
+                            <div className="card profile-content-card" style={{ padding: '24px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                                     <div style={{ width: '56px', height: '56px', borderRadius: '12px', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
                                         <i className="fas fa-shopping-bag"></i>
@@ -616,7 +550,7 @@ export default function ProfilePage() {
                                 </div>
                             </div>
                             
-                            <div className="card" style={{ padding: '24px', borderRadius: '16px', background: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9' }}>
+                            <div className="card profile-content-card" style={{ padding: '24px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                                     <div style={{ width: '56px', height: '56px', borderRadius: '12px', background: '#fef3c7', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
                                         <i className="fas fa-clock"></i>
@@ -670,35 +604,35 @@ export default function ProfilePage() {
                     </>
                 )}
 
-            <div className="card" style={{ padding: '40px', borderRadius: '16px', background: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9', display: activeTab === 'dashboard' ? 'none' : 'block' }}>
+            <div className="card profile-content-card" style={{ display: activeTab === 'dashboard' ? 'none' : 'block' }}>
                 {activeTab === 'profil' && (
                     <>
                         <div style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: '20px', marginBottom: '32px' }}>
                             <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e293b', margin: 0 }}>Profil Saya</h1>
                             <p style={{ fontSize: '0.95rem', color: '#64748b', marginTop: '6px' }}>Kelola informasi profil Anda untuk mengontrol, melindungi dan mengamankan akun</p>
                         </div>
-                        <div style={{ display: 'flex' }}>
-                            <div style={{ flex: '1', paddingRight: '40px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center' }}>
-                                    <div style={{ width: '120px', textAlign: 'right', paddingRight: '20px', fontSize: '0.9rem', color: '#555' }}>Username</div>
-                                    <div style={{ flex: 1 }}>
+                        <div className="profile-layout-split">
+                            <div className="profile-content" style={{ paddingRight: '40px' }}>
+                                <div className="profile-form-row">
+                                    <div className="profile-form-label">Username</div>
+                                    <div className="profile-form-input">
                                         <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} style={{ width: '100%', maxWidth: '400px' }} />
                                         <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '4px' }}>Username hanya dapat diubah satu (1) kali.</div>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center' }}>
-                                    <div style={{ width: '120px', textAlign: 'right', paddingRight: '20px', fontSize: '0.9rem', color: '#555' }}>Nama</div>
-                                    <div style={{ flex: 1 }}><input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} style={{ width: '100%', maxWidth: '400px' }} /></div>
+                                <div className="profile-form-row">
+                                    <div className="profile-form-label">Nama</div>
+                                    <div className="profile-form-input"><input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} style={{ width: '100%', maxWidth: '400px' }} /></div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center' }}>
-                                    <div style={{ width: '120px', textAlign: 'right', paddingRight: '20px', fontSize: '0.9rem', color: '#555' }}>Email</div>
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div className="profile-form-row">
+                                    <div className="profile-form-label">Email</div>
+                                    <div className="profile-form-input" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <span style={{ fontSize: '0.9rem', color: '#333' }}>{maskedEmail}</span>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center' }}>
-                                    <div style={{ width: '120px', textAlign: 'right', paddingRight: '20px', fontSize: '0.9rem', color: '#555' }}>Nomor Telepon</div>
-                                    <div style={{ flex: 1 }}>
+                                <div className="profile-form-row">
+                                    <div className="profile-form-label">Nomor Telepon</div>
+                                    <div className="profile-form-input">
                                         <input 
                                             type="tel"
                                             className="input" 
@@ -710,26 +644,26 @@ export default function ProfilePage() {
                                         />
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center' }}>
-                                    <div style={{ width: '120px', textAlign: 'right', paddingRight: '20px', fontSize: '0.9rem', color: '#555' }}>Jenis Kelamin</div>
-                                    <div style={{ flex: 1, display: 'flex', gap: '16px', fontSize: '0.9rem', color: '#333' }}>
+                                <div className="profile-form-row">
+                                    <div className="profile-form-label">Jenis Kelamin</div>
+                                    <div className="profile-form-input" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '0.9rem', color: '#333' }}>
                                         <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}><input type="radio" name="gender" value="Laki-laki" checked={gender === 'Laki-laki'} onChange={(e) => setGender(e.target.value)} /> Laki-laki</label>
                                         <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}><input type="radio" name="gender" value="Perempuan" checked={gender === 'Perempuan'} onChange={(e) => setGender(e.target.value)} /> Perempuan</label>
                                         <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}><input type="radio" name="gender" value="Lainnya" checked={gender === 'Lainnya'} onChange={(e) => setGender(e.target.value)} /> Lainnya</label>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center' }}>
-                                    <div style={{ width: '120px', textAlign: 'right', paddingRight: '20px', fontSize: '0.9rem', color: '#555' }}>Tanggal lahir</div>
-                                    <div style={{ flex: 1 }}><input type="date" className="input" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} style={{ width: '100%', maxWidth: '200px' }} /></div>
+                                <div className="profile-form-row">
+                                    <div className="profile-form-label">Tanggal lahir</div>
+                                    <div className="profile-form-input"><input type="date" className="input" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} style={{ width: '100%', maxWidth: '200px' }} /></div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', marginTop: '10px' }}>
-                                    <div style={{ width: '120px', paddingRight: '20px' }}></div>
+                                <div className="profile-form-row" style={{ marginTop: '10px' }}>
+                                    <div className="profile-form-label"></div>
                                     <button className="btn btnPrimary" style={{ padding: '12px 32px', fontSize: '0.9rem', borderRadius: '4px' }} onClick={handleSaveMetadata} disabled={saving}>
                                         {saving ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</> : "Simpan"}
                                     </button>
                                 </div>
                             </div>
-                            <div style={{ width: '280px', borderLeft: '1px solid #efefef', paddingLeft: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div className="profile-avatar-section">
                                 <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: '#efefef', backgroundImage: `url(${avatarUrl || '/people.png'})`, backgroundSize: 'cover', backgroundPosition: 'center', marginBottom: '16px', position: 'relative', overflow: 'hidden' }} onDrop={handleDrop} onDragOver={handleDragOver} onDragEnter={handleDragOver}>
                                     {uploading && <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="fas fa-circle-notch fa-spin fa-2x" style={{color: '#ee4d2d'}}></i></div>}
                                 </div>
@@ -744,7 +678,7 @@ export default function ProfilePage() {
 
                 {activeTab === 'alamat' && (
                     <>
-                        <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h1 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#333', margin: 0 }}>Alamat Saya</h1>
                             <button className="btn btnPrimary" style={{ background: '#ee4d2d', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '4px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => {
                                 setNewAddress({ id: null, name: "", phone: "", region: "", street: "", detail: "", label: "Rumah", isPrimary: false, coordinates: null })
@@ -763,11 +697,7 @@ export default function ProfilePage() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 {addresses.map((addr) => (
                                     <div key={addr.id} style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '20px', position: 'relative' }}>
-                                        <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', gap: '12px' }}>
-                                            <span style={{ color: 'var(--primary)', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600 }} onClick={() => { setNewAddress(addr); setAddressModalOpen(true); }}>Ubah</span>
-                                            <span style={{ color: '#ef4444', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600 }} onClick={() => handleDeleteAddress(addr.id)}>Hapus</span>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', paddingRight: '100px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '8px' }}>
                                             <span style={{ fontWeight: 600, color: 'var(--dark)' }}>{addr.name}</span>
                                             <span style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>|</span>
                                             <span style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>{addr.phone}</span>
@@ -781,9 +711,15 @@ export default function ProfilePage() {
                                             </div>
                                         )}
                                         
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: !addr.coordinates && !addr.detail ? '12px' : '0' }}>
-                                            {addr.label && <span style={{ padding: '4px 8px', border: '1px solid #ee4d2d', color: '#ee4d2d', fontSize: '0.75rem', borderRadius: '2px' }}>{addr.label}</span>}
-                                            {addr.isPrimary && <span style={{ padding: '4px 8px', border: '1px solid var(--border)', background: '#f8fafc', color: 'var(--muted)', fontSize: '0.75rem', borderRadius: '2px' }}>Utama</span>}
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed #e2e8f0' }}>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' }}>
+                                                {addr.label && <span style={{ padding: '4px 8px', border: '1px solid #ee4d2d', color: '#ee4d2d', fontSize: '0.75rem', borderRadius: '2px' }}>{addr.label}</span>}
+                                                {addr.isPrimary && <span style={{ padding: '4px 8px', border: '1px solid var(--border)', background: '#f8fafc', color: 'var(--muted)', fontSize: '0.75rem', borderRadius: '2px' }}>Utama</span>}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '16px' }}>
+                                                <span style={{ color: 'var(--primary)', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600 }} onClick={() => { setNewAddress(addr); setAddressModalOpen(true); }}>Ubah</span>
+                                                <span style={{ color: '#ef4444', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600 }} onClick={() => handleDeleteAddress(addr.id)}>Hapus</span>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -799,21 +735,23 @@ export default function ProfilePage() {
                             <p style={{ fontSize: '0.9rem', color: '#555', marginTop: '4px' }}>Untuk keamanan akun Anda, mohon tidak menyebarkan password Anda kepada orang lain.</p>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '600px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                                <div style={{ width: '150px', textAlign: 'right', paddingRight: '20px', fontSize: '0.9rem', color: '#555' }}>Password Baru</div>
-                                <div style={{ flex: 1 }}>
-                                    <input type="password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 6 karakter" style={{ width: '100%' }} />
+                            <div className="profile-form-row">
+                                <div className="profile-form-label">Password Baru</div>
+                                <div className="profile-form-input">
+                                    <input type="password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 6 karakter" style={{ width: '100%', maxWidth: '300px' }} />
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                                <div style={{ width: '150px', textAlign: 'right', paddingRight: '20px', fontSize: '0.9rem', color: '#555' }}>Konfirmasi Password</div>
-                                <div style={{ flex: 1 }}>
-                                    <input type="password" className="input" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Ketik ulang password baru" style={{ width: '100%' }} />
+                            <div className="profile-form-row">
+                                <div className="profile-form-label">Konfirmasi Password</div>
+                                <div className="profile-form-input">
+                                    <input type="password" className="input" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Ketik ulang password baru" style={{ width: '100%', maxWidth: '300px' }} />
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', marginTop: '10px' }}>
-                                <div style={{ width: '150px', paddingRight: '20px' }}></div>
-                                <button className="btn btnPrimary" style={{ padding: '10px 24px', background: '#ee4d2d', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.95rem' }} onClick={handlePasswordChange} disabled={saving}>{saving ? "Memproses..." : "Konfirmasi"}</button>
+                            <div className="profile-form-row" style={{ marginTop: '10px' }}>
+                                <div className="profile-form-label"></div>
+                                <div className="profile-form-input">
+                                    <button className="btn btnPrimary" style={{ padding: '10px 24px', background: '#ee4d2d', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.95rem' }} onClick={handlePasswordChange} disabled={saving}>{saving ? "Memproses..." : "Konfirmasi"}</button>
+                                </div>
                             </div>
                         </div>
                     </>
@@ -862,7 +800,7 @@ export default function ProfilePage() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 {filteredUserOrders.map(order => (
                                     <div key={order.id} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', background: '#fff' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px', marginBottom: '12px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px', marginBottom: '12px', gap: '12px' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                                 <i className="fas fa-shopping-bag" style={{ color: 'var(--primary)', fontSize: '1.2rem' }}></i>
                                                 <div>
@@ -875,12 +813,12 @@ export default function ProfilePage() {
                                             </div>
                                         </div>
                                         
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                                             <div>
                                                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '4px' }}>Total Belanja</div>
                                                 <div style={{ fontSize: '1.1rem', color: 'var(--dark)', fontWeight: 800 }}>{formatRupiah(order.total_amount)}</div>
                                             </div>
-                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                                 {(order.status === 'Selesai' || order.status === 'Dikirim') && (
                                                     <button 
                                                         onClick={() => {

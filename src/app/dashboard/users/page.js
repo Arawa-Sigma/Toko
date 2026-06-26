@@ -1,15 +1,25 @@
 "use client"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabaseClient'
+import { createDebugClient, logger } from '@/lib/debug'
 
 export default function UsersPage() {
-    const [activeTab, setActiveTab] = useState('users')
     const [users, setUsers] = useState([])
-    const [requests, setRequests] = useState([])
     const [loading, setLoading] = useState(true)
-    const supabase = createClient()
+    const [searchQuery, setSearchQuery] = useState('')
+    const [editingUser, setEditingUser] = useState(null)
+    const [editForm, setEditForm] = useState({ name: '', email: '', role: 'Customer' })
+    
+    // 🔧 1. Wrap Supabase client dengan Debug Client 
+    // Menggunakan useMemo agar client tidak terbuat ulang setiap kali komponen render
+    const supabase = useMemo(() => {
+        const baseClient = createClient()
+        return createDebugClient(baseClient, { module: 'dashboard/users/page' })
+    }, [])
 
     useEffect(() => {
+        // 🔧 2. Contoh pencatatan Info saat komponen dimuat
+        logger.info("Halaman Manajemen Pengguna dimuat", { module: 'dashboard/users/page' })
         fetchData()
     }, [])
 
@@ -26,51 +36,64 @@ export default function UsersPage() {
             } else if (usersData) {
                 setUsers(usersData)
             }
-
-            // 2. Ambil data permintaan role
-            const { data: reqData, error: reqErr } = await supabase
-                .from('role_requests')
-                .select('*')
-                .order('created_at', { ascending: false })
-            if (!reqErr && reqData) {
-                setRequests(reqData)
-            } else {
-                console.warn("Gagal mengambil role_requests (Tabel mungkin belum ada):", reqErr)
-            }
         } catch (e) {
             console.error(e)
         }
         setLoading(false)
     }
 
-    async function handleApprove(reqId, userId) {
-        if (!confirm("Setujui pengguna ini menjadi Owner?")) return
+    async function handleDelete(userId) {
+        if (!confirm("Apakah Anda yakin ingin menghapus pengguna ini beserta datanya? Tindakan ini tidak dapat dibatalkan.")) return
         
         try {
-            // Update status
-            await supabase.from('role_requests').update({ status: 'Approved' }).eq('id', reqId)
+            // Coba panggil RPC khusus untuk menghapus user dari auth.users
+            const { error: rpcError } = await supabase.rpc('delete_user_admin', { target_user_id: userId })
             
-            // Perbarui UI
-            setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: 'Approved' } : r))
+            if (rpcError) {
+                console.warn("RPC delete_user_admin tidak ditemukan atau gagal:", rpcError)
+                
+                // Fallback: coba hapus profil. Menggunakan .select() untuk mengecek apakah RLS mencegah penghapusan
+                const { data, error } = await supabase.from('profiles').delete().eq('id', userId).select()
+                
+                if (error) throw error
+                if (!data || data.length === 0) {
+                    alert("Kegagalan berlapis:\n1. RPC Error: " + rpcError.message + "\n2. RLS memblokir hapus profil biasa.")
+                    return // Batal menghapus dari tampilan
+                }
+            }
             
-            // Kita juga bisa mengubah role di tabel profiles jika diperlukan
-            await supabase.from('profiles').update({ role: 'Owner' }).eq('id', userId)
-            
-            alert("Berhasil disetujui! Pengguna akan otomatis menjadi Owner saat mereka login.")
+            setUsers(prev => prev.filter(u => u.id !== userId))
+            alert("Pengguna berhasil dihapus.")
+            logger.success(`Berhasil menghapus pengguna dengan ID: ${userId}`, { module: 'dashboard/users/page', fn: 'handleDelete' })
         } catch (e) {
-            console.error(e)
-            alert("Gagal menyetujui")
+            console.error("Delete error:", e)
+            logger.error("Gagal menghapus pengguna", { module: 'dashboard/users/page', fn: 'handleDelete', data: e })
+            alert("Gagal menghapus pengguna. " + (e.message || ''))
         }
     }
 
-    async function handleReject(reqId) {
-        if (!confirm("Tolak permintaan ini?")) return
-        
+    function openEditModal(user) {
+        setEditingUser(user)
+        setEditForm({ name: user.name || '', email: user.email || '', role: user.role || 'Customer' })
+    }
+
+    async function saveEdit() {
+        if (!editingUser) return
         try {
-            await supabase.from('role_requests').update({ status: 'Rejected' }).eq('id', reqId)
-            setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: 'Rejected' } : r))
+            // Update name dan role di profiles (email tidak bisa diubah langsung dari public.profiles)
+            const { error } = await supabase.from('profiles').update({ 
+                name: editForm.name, 
+                role: editForm.role
+            }).eq('id', editingUser.id)
+
+            if (error) throw error
+
+            setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, name: editForm.name, email: editForm.email, role: editForm.role } : u))
+            setEditingUser(null)
+            alert("Data pengguna berhasil diperbarui.")
         } catch (e) {
             console.error(e)
+            alert("Gagal memperbarui data pengguna.")
         }
     }
 
@@ -88,34 +111,37 @@ export default function UsersPage() {
         return formatDate(dateStr)
     }
 
+    const filteredUsers = users.filter(u => {
+        const query = searchQuery.toLowerCase()
+        return (u.id && u.id.toLowerCase().includes(query)) ||
+               (u.name && u.name.toLowerCase().includes(query)) ||
+               (u.email && u.email.toLowerCase().includes(query))
+    })
+
     return (
         <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
                     <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--dark)', margin: '0 0 8px' }}>Manajemen Pengguna</h1>
-                    <p style={{ margin: 0, color: '#64748b', fontSize: '0.95rem' }}>Kelola akun pelanggan dan permintaan hak akses Owner.</p>
+                    <p style={{ margin: 0, color: '#64748b', fontSize: '0.95rem' }}>Kelola akun pelanggan dan hak akses secara manual.</p>
                 </div>
             </div>
 
-            {/* Tabs */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid #e2e8f0' }}>
-                <button 
-                    onClick={() => setActiveTab('users')}
-                    style={{ padding: '12px 24px', background: 'none', border: 'none', borderBottom: activeTab === 'users' ? '3px solid var(--primary)' : '3px solid transparent', color: activeTab === 'users' ? 'var(--primary)' : '#64748b', fontWeight: activeTab === 'users' ? 700 : 600, fontSize: '0.95rem', cursor: 'pointer', transition: 'all 0.2s' }}
-                >
-                    <i className="fas fa-users" style={{ marginRight: '8px' }}></i> Daftar Pengguna ({users.length})
-                </button>
-                <button 
-                    onClick={() => setActiveTab('requests')}
-                    style={{ padding: '12px 24px', background: 'none', border: 'none', borderBottom: activeTab === 'requests' ? '3px solid #f59e0b' : '3px solid transparent', color: activeTab === 'requests' ? '#f59e0b' : '#64748b', fontWeight: activeTab === 'requests' ? 700 : 600, fontSize: '0.95rem', cursor: 'pointer', transition: 'all 0.2s', position: 'relative' }}
-                >
-                    <i className="fas fa-key" style={{ marginRight: '8px' }}></i> Permintaan Role
-                    {requests.filter(r => r.status === 'Pending').length > 0 && (
-                        <span style={{ position: 'absolute', top: '8px', right: '4px', background: '#ef4444', color: '#fff', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '999px' }}>
-                            {requests.filter(r => r.status === 'Pending').length}
-                        </span>
-                    )}
-                </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+                <div style={{ position: 'relative', flex: '1 1 250px', maxWidth: '100%' }}>
+                    <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}></i>
+                    <input 
+                        type="text" 
+                        placeholder="Cari ID, Email, atau Nama..." 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                </div>
+                <div style={{ color: '#64748b', fontSize: '0.95rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    Total Pengguna: {filteredUsers.length}
+                </div>
             </div>
 
             {/* Content */}
@@ -124,25 +150,30 @@ export default function UsersPage() {
                     <i className="fas fa-circle-notch fa-spin" style={{ fontSize: '2rem', marginBottom: '16px' }}></i>
                     <div>Memuat data...</div>
                 </div>
-            ) : activeTab === 'users' ? (
-                <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                        <thead>
-                            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                                <th style={{ padding: '16px 20px', color: '#475569', fontSize: '0.85rem', fontWeight: 700 }}>Pengguna</th>
-                                <th style={{ padding: '16px 20px', color: '#475569', fontSize: '0.85rem', fontWeight: 700 }}>Kontak</th>
-                                <th style={{ padding: '16px 20px', color: '#475569', fontSize: '0.85rem', fontWeight: 700 }}>Bergabung</th>
-                                <th style={{ padding: '16px 20px', color: '#475569', fontSize: '0.85rem', fontWeight: 700 }}>Terakhir Aktif</th>
-                                <th style={{ padding: '16px 20px', color: '#475569', fontSize: '0.85rem', fontWeight: 700 }}>Role</th>
+            ) : (
+                <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflowX: 'auto', WebkitOverflowScrolling: 'touch', boxShadow: '0 10px 24px rgba(15,23,42,0.04)' }}>
+                    <table style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse', textAlign: 'left' }}>
+                        <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                            <tr>
+                                <th style={{ padding: '14px 20px', color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pengguna</th>
+                                <th style={{ padding: '14px 20px', color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Kontak</th>
+                                <th style={{ padding: '14px 20px', color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bergabung</th>
+                                <th style={{ padding: '14px 20px', color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Terakhir Aktif</th>
+                                <th style={{ padding: '14px 20px', color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Role</th>
+                                <th style={{ padding: '14px 20px', color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center' }}>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {users.length === 0 ? (
+                            {filteredUsers.length === 0 ? (
                                 <tr>
-                                    <td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>Tidak ada pengguna ditemukan.</td>
+                                    <td colSpan="6" style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
+                                        <i className="fas fa-users" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px' }}></i>
+                                        <h3 style={{ margin: '0 0 8px', color: '#64748b' }}>Tidak ada pengguna</h3>
+                                        <p style={{ margin: 0, fontSize: '0.85rem' }}>Data pengguna tidak ditemukan.</p>
+                                    </td>
                                 </tr>
-                            ) : users.map((user, idx) => (
-                                <tr key={user.id} style={{ borderBottom: idx === users.length - 1 ? 'none' : '1px solid #f1f5f9', transition: 'background 0.2s', ':hover': { background: '#f8fafc' } }}>
+                            ) : filteredUsers.map((user, idx) => (
+                                <tr key={user.id} style={{ borderBottom: idx === filteredUsers.length - 1 ? 'none' : '1px solid #f1f5f9', transition: 'background 0.2s', ':hover': { background: '#f8fafc' } }}>
                                     <td style={{ padding: '16px 20px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                             <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#e2e8f0', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontWeight: 700, flexShrink: 0 }}>
@@ -153,8 +184,8 @@ export default function UsersPage() {
                                                 )}
                                             </div>
                                             <div>
-                                                <div style={{ fontWeight: 700, color: 'var(--dark)', fontSize: '0.95rem' }}>{user.name || 'Anonim'}</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>ID: {user.id.substring(0,8)}...</div>
+                                                <div style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '0.95rem' }}>{user.name || 'Anonim'}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: '2px' }}>ID: {user.id.substring(0,8)}...</div>
                                             </div>
                                         </div>
                                     </td>
@@ -164,7 +195,7 @@ export default function UsersPage() {
                                     <td style={{ padding: '16px 20px', fontSize: '0.9rem', color: '#475569' }}>
                                         {formatDate(user.created_at)}
                                     </td>
-                                    <td style={{ padding: '16px 20px', fontSize: '0.9rem', color: '#475569' }}>
+                                    <td style={{ padding: '16px 20px', fontSize: '0.9rem', color: '#475569', fontWeight: 500 }}>
                                         {user.last_active ? formatTimeAgo(user.last_active) : <span style={{ color: '#cbd5e1' }}>Belum login</span>}
                                     </td>
                                     <td style={{ padding: '16px 20px' }}>
@@ -179,68 +210,64 @@ export default function UsersPage() {
                                             {user.role || 'Pelanggan'}
                                         </span>
                                     </td>
+                                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                            <button onClick={() => openEditModal(user)} title="Edit Pengguna" style={{ background: '#f0fdf4', color: '#16a34a', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}>
+                                                <i className="fas fa-edit"></i>
+                                            </button>
+                                            <button onClick={() => handleDelete(user.id)} title="Hapus Pengguna" style={{ background: '#fef2f2', color: '#dc2626', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}>
+                                                <i className="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
-            ) : (
-                <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-                    {requests.length === 0 ? (
-                        <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
-                            <i className="fas fa-shield-alt" style={{ fontSize: '3rem', marginBottom: '16px', color: '#e2e8f0' }}></i>
-                            <div>Belum ada permintaan akses Owner.</div>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', padding: '24px' }}>
-                            {requests.map(req => (
-                                <div key={req.id} style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', background: req.status === 'Pending' ? '#fff' : '#f8fafc', position: 'relative', overflow: 'hidden' }}>
-                                    {req.status === 'Pending' && <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: '#f59e0b' }}></div>}
-                                    {req.status === 'Approved' && <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: '#10b981' }}></div>}
-                                    {req.status === 'Rejected' && <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: '#ef4444' }}></div>}
-                                    
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                                        <div>
-                                            <div style={{ fontWeight: 800, color: 'var(--dark)', fontSize: '1.05rem', marginBottom: '4px' }}>{req.user_name || 'Pengguna'}</div>
-                                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Meminta akses Owner</div>
-                                        </div>
-                                        <div style={{ 
-                                            fontSize: '0.7rem', 
-                                            fontWeight: 800, 
-                                            padding: '4px 8px', 
-                                            borderRadius: '6px', 
-                                            textTransform: 'uppercase',
-                                            background: req.status === 'Pending' ? '#fef3c7' : req.status === 'Approved' ? '#ecfdf5' : '#fef2f2',
-                                            color: req.status === 'Pending' ? '#d97706' : req.status === 'Approved' ? '#10b981' : '#ef4444'
-                                        }}>
-                                            {req.status}
-                                        </div>
-                                    </div>
-                                    
-                                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <i className="far fa-clock"></i> Diajukan {formatTimeAgo(req.created_at)}
-                                    </div>
+            )}
 
-                                    {req.status === 'Pending' && (
-                                        <div style={{ display: 'flex', gap: '10px' }}>
-                                            <button 
-                                                onClick={() => handleApprove(req.id, req.user_id)}
-                                                style={{ flex: 1, padding: '10px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-                                            >
-                                                Setujui
-                                            </button>
-                                            <button 
-                                                onClick={() => handleReject(req.id)}
-                                                style={{ flex: 1, padding: '10px', background: '#fef2f2', color: '#ef4444', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-                                            >
-                                                Tolak
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+            {/* Edit Modal */}
+            {editingUser && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '400px', maxWidth: '90%' }}>
+                        <h2 style={{ margin: '0 0 16px', fontSize: '1.25rem' }}>Edit Pengguna</h2>
+                        <div style={{ marginBottom: '12px' }}>
+                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', color: '#475569' }}>Nama</label>
+                            <input 
+                                type="text" 
+                                value={editForm.name} 
+                                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                            />
                         </div>
-                    )}
+                        <div style={{ marginBottom: '24px' }}>
+                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', color: '#475569' }}>Email</label>
+                            <input 
+                                type="email" 
+                                value={editForm.email} 
+                                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                            />
+                        </div>
+                        <div style={{ marginBottom: '24px' }}>
+                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', color: '#475569' }}>Role</label>
+                            <select 
+                                value={editForm.role}
+                                onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff' }}
+                            >
+                                <option value="Customer">Customer</option>
+                                <option value="Owner">Owner</option>
+                                <option value="Logistik">Logistik / Staff Gudang</option>
+                                <option value="Admin">Admin</option>
+                            </select>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                            <button onClick={() => setEditingUser(null)} style={{ padding: '8px 16px', background: '#f1f5f9', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Batal</button>
+                            <button onClick={saveEdit} style={{ padding: '8px 16px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Simpan</button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

@@ -493,7 +493,11 @@ flowchart TD
     J -->|Ya| K[Tampil Badge Promo + Jumlah Hemat]
     J -->|Tidak| L[Tampil Banner Kembali ke Keranjang untuk Masukkan Promo]
 
-    G --> M[Isi Nama Penerima]
+    G --> M{Pilih Alamat Pengiriman}
+    M -->|Alamat Tersedia| M1[Pilih dari Buku Alamat]
+    M -->|Belum Ada Alamat| M2[Tambah Alamat Baru]
+    M2 --> M3[Buka Form Alamat + MapPicker]
+    M3 --> M4[Simpan ke Profil & Gunakan Alamat]
     G --> N[Pilih Metode Pengiriman]
     N --> O{Pilihan Kurir}
     O -->|Ambil Sendiri| P[Ongkir = Rp 0]
@@ -511,7 +515,7 @@ flowchart TD
     X -->|Tidak| Y[Toast Error: Silakan Login]
     Y --> G
     X -->|Ya| Z{Nama Penerima Diisi?}
-    Z -->|Tidak| AA[Toast Error: Nama penerima kosong]
+    Z -->|Tidak| AA[Toast Error: Nama penerima/Alamat belum ada]
     AA --> G
     Z -->|Ya| AB[Cek Stok Setiap Item ke Supabase]
     AB --> AC{Ada Item Stok Habis?}
@@ -535,7 +539,8 @@ flowchart TD
     I --> Z_END([End])
     K --> Z_END([End])
     L --> Z_END([End])
-    M --> Z_END([End])
+    M1 --> Z_END([End])
+    M4 --> Z_END([End])
     P --> Z_END([End])
     Q --> Z_END([End])
     R --> Z_END([End])

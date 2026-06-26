@@ -53,17 +53,11 @@ export default function DashboardLayout({ children }) {
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', background: '#f4f7f6', color: '#333' }}>
+            {/* Overlay for mobile sidebar */}
+            <div className={`dash-overlay ${isSidebarOpen ? 'open' : ''}`} onClick={() => setIsSidebarOpen(false)}></div>
+            
             {/* SIDEBAR */}
-            <aside style={{ 
-                width: isSidebarOpen ? '200px' : '0px', 
-                background: '#ffffff', 
-                borderRight: '1px solid #e2e8f0', 
-                transition: 'all 0.3s ease',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                flexShrink: 0
-            }}>
+            <aside className={`dash-sidebar ${isSidebarOpen ? '' : 'closed'}`}>
                 {/* Logo Area */}
                 <div style={{ height: '50px', padding: '0 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '8px', boxSizing: 'border-box' }}>
                     <div style={{ width: '28px', height: '28px', background: 'var(--primary)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.85rem' }}>
@@ -229,8 +223,8 @@ export default function DashboardLayout({ children }) {
                     </div>
 
                     {/* Right side navbar */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ position: 'relative' }}>
+                    <div className="dash-header-right" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div className="dash-header-search" style={{ position: 'relative' }}>
                             <input type="text" placeholder="Search..." className="input" style={{ width: '180px', padding: '6px 12px 6px 30px', fontSize: '0.8rem', borderRadius: '999px', background: '#f1f5f9', border: 'none', minHeight: '32px' }} />
                             <i className="fas fa-search" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '0.8rem' }}></i>
                         </div>
@@ -247,8 +241,8 @@ export default function DashboardLayout({ children }) {
                                 </div>
                             </Link>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderLeft: '1px solid #e2e8f0', paddingLeft: '16px' }}>
-                            <div style={{ textAlign: 'right' }}>
+                        <div className="dash-header-profile" style={{ display: 'flex', alignItems: 'center', gap: '8px', borderLeft: '1px solid #e2e8f0', paddingLeft: '16px' }}>
+                            <div className="dash-header-profile-text" style={{ textAlign: 'right' }}>
                                 <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--dark)' }}>
                                     {session?.user?.user_metadata?.username || session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || 'Owner Account'}
                                 </div>

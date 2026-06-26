@@ -4,15 +4,7 @@ flowchart TD
     C -->|Tidak| D[Tampil Halaman Profil Kosong / Belum Login]
     C -->|Ya| E[Load User Metadata dari Session Zustand]
     E --> F[Fetch Pesanan dari Supabase berdasarkan user_id]
-    E --> G[Fetch Role Request Status dari Supabase]
     E --> H[Load Alamat dari user_metadata.addresses]
-
-    G --> I{Role Request = Approved?}
-    I -->|Ya| J[Auto-Update Role jadi Owner via Supabase Auth]
-    J --> K[Sync ke Tabel profiles]
-    K --> L[Refresh Session Zustand]
-    L --> M[Delete Role Request yang Sudah Diproses]
-    I -->|Pending / Tidak Ada| N[Tampil Status Permintaan]
 
     B --> O[Tab Navigasi Profil]
     O --> P{Pilih Tab}
@@ -66,21 +58,10 @@ flowchart TD
     BF --> BG[Simpan Alamat ke user_metadata.addresses]
     BG --> BH[Update via supabase.auth.updateUser]
 
-    P -->|Minta Akses Owner| BI{Sudah Ada Role Request?}
-    BI -->|Ya - Pending| BJ[Tampil Status Menunggu Persetujuan]
-    BI -->|Ya - Approved| BK[Tampil Tombol Klaim sudah diklaim otomatis]
-    BI -->|Tidak Ada| BL[Tombol Ajukan Permintaan Aktif]
-    BL --> BM[Konfirmasi Dialog]
-    BM -->|OK| BN[INSERT ke Tabel role_requests Supabase]
-    BN --> BO[Toast Sukses Permintaan Dikirim]
-    BO --> BJ
-
     %% Menambahkan oval End pada titik akhir
     D --> Z_END([End])
     F --> Z_END([End])
     H --> Z_END([End])
-    M --> Z_END([End])
-    N --> Z_END([End])
     X --> Z_END([End])
     AB --> Z_END([End])
     AG --> Z_END([End])
@@ -90,5 +71,3 @@ flowchart TD
     AZ --> Z_END([End])
     BB --> Z_END([End])
     BH --> Z_END([End])
-    BJ --> Z_END([End])
-    BK --> Z_END([End])

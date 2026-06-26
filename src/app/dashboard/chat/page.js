@@ -10,12 +10,18 @@ export default function ChatPage() {
   const [inputText, setInputText] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [profilesMap, setProfilesMap] = useState({})
+  const [isMobile, setIsMobile] = useState(false)
   
   const messagesEndRef = useRef(null)
   const supabase = createClient()
   const showToast = useUIStore((state) => state.showToast)
 
   useEffect(() => {
+    // Handle responsive layout
+    const handleResize = () => setIsMobile(window.innerWidth <= 768)
+    handleResize()
+    window.addEventListener('resize', handleResize)
+
     // Request notification permission if not granted
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission()
@@ -67,6 +73,7 @@ export default function ChatPage() {
 
     return () => {
       supabase.removeChannel(channel)
+      window.removeEventListener('resize', handleResize)
     }
   }, [selectedUserId])
 
@@ -206,7 +213,13 @@ export default function ChatPage() {
       <div style={{ flex: 1, background: '#fff', display: 'flex', overflow: 'hidden' }}>
         
         {/* Sidebar Kontak */}
-        <div style={{ width: '320px', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+        <div style={{ 
+            width: isMobile ? '100%' : '320px', 
+            borderRight: isMobile ? 'none' : '1px solid #e2e8f0', 
+            display: (isMobile && selectedUserId) ? 'none' : 'flex', 
+            flexDirection: 'column', 
+            background: '#f8fafc' 
+        }}>
             <div style={{ padding: '16px', borderBottom: '1px solid #e2e8f0', background: '#fff' }}>
                 <div style={{ position: 'relative' }}>
                     <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }}></i>
@@ -275,7 +288,13 @@ export default function ChatPage() {
         </div>
 
         {/* Area Percakapan */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+        <div style={{ 
+            flex: 1, 
+            display: (isMobile && !selectedUserId) ? 'none' : 'flex', 
+            flexDirection: 'column', 
+            background: '#f8fafc',
+            width: isMobile ? '100%' : 'auto'
+        }}>
             {!selectedUserId ? (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
                     <div style={{ width: '80px', height: '80px', background: '#e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
@@ -287,7 +306,12 @@ export default function ChatPage() {
             ) : (
                 <>
                     {/* Header Chat */}
-                    <div style={{ padding: '16px 24px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ padding: isMobile ? '12px 16px' : '16px 24px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: isMobile ? '12px' : '16px' }}>
+                        {isMobile && (
+                            <button onClick={() => setSelectedUserId(null)} style={{ background: 'none', border: 'none', color: 'var(--dark)', fontSize: '1.2rem', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Kembali ke daftar">
+                                <i className="fas fa-arrow-left"></i>
+                            </button>
+                        )}
                         {profilesMap[selectedUserId] ? (
                             <>
                                 <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
@@ -295,20 +319,22 @@ export default function ChatPage() {
                                         <img src={profilesMap[selectedUserId].avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                                     ) : (profilesMap[selectedUserId].full_name || profilesMap[selectedUserId].username || "A").charAt(0).toUpperCase()}
                                 </div>
-                                <div>
-                                    <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--dark)' }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontWeight: 700, fontSize: isMobile ? '1rem' : '1.1rem', color: 'var(--dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {profilesMap[selectedUserId].full_name || profilesMap[selectedUserId].username || "Pengguna Anonim"}
                                     </div>
-                                    <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-                                        Pelanggan SembakoBerkah
-                                    </div>
+                                    {!isMobile && (
+                                        <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                                            Pelanggan SembakoBerkah
+                                        </div>
+                                    )}
                                 </div>
                                 <button 
                                     onClick={handleClearHistory}
-                                    style={{ marginLeft: 'auto', background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }}
+                                    style={{ marginLeft: 'auto', flexShrink: 0, background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', padding: isMobile ? '8px 12px' : '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: isMobile ? '0' : '8px', transition: 'all 0.2s' }}
                                     title="Hapus seluruh riwayat chat"
                                 >
-                                    <i className="fas fa-trash-alt"></i> Bersihkan Chat
+                                    <i className="fas fa-trash-alt"></i> {!isMobile && 'Bersihkan Chat'}
                                 </button>
                             </>
                         ) : (
@@ -325,36 +351,37 @@ export default function ChatPage() {
                                 const isAdmin = msg.sender === 'admin'
                                 return (
                                     <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isAdmin ? 'flex-end' : 'flex-start' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             {isAdmin && (
-                                                <button onClick={() => handleDeleteMessage(msg.id)} style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', opacity: 0.7, padding: '4px' }} title="Hapus pesan">
-                                                    <i className="fas fa-trash-alt" style={{ fontSize: '0.8rem' }}></i>
+                                                <button onClick={() => handleDeleteMessage(msg.id)} style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', opacity: 0.7, padding: '4px', alignSelf: 'center' }} title="Hapus pesan">
+                                                    <i className="fas fa-trash-alt" style={{ fontSize: '0.75rem' }}></i>
                                                 </button>
                                             )}
                                             <div style={{ 
-                                                maxWidth: '70%', 
-                                                padding: '12px 16px', 
+                                                maxWidth: isMobile ? '85%' : '70%', 
+                                                padding: '10px 14px', 
                                                 background: isAdmin ? 'var(--primary)' : '#fff', 
                                                 color: isAdmin ? '#fff' : 'var(--dark)', 
                                                 borderRadius: '16px', 
                                                 borderBottomRightRadius: isAdmin ? '4px' : '16px',
                                                 borderBottomLeftRadius: isAdmin ? '16px' : '4px',
-                                                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                                                 border: isAdmin ? 'none' : '1px solid #e2e8f0',
-                                                fontSize: '0.95rem',
-                                                lineHeight: 1.5
+                                                fontSize: '0.9rem',
+                                                lineHeight: 1.4,
+                                                wordBreak: 'break-word'
                                             }}>
                                                 {msg.text}
                                             </div>
                                             {!isAdmin && (
-                                                <button onClick={() => handleDeleteMessage(msg.id)} style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', opacity: 0.7, padding: '4px' }} title="Hapus pesan">
-                                                    <i className="fas fa-trash-alt" style={{ fontSize: '0.8rem' }}></i>
+                                                <button onClick={() => handleDeleteMessage(msg.id)} style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', opacity: 0.7, padding: '4px', alignSelf: 'center' }} title="Hapus pesan">
+                                                    <i className="fas fa-trash-alt" style={{ fontSize: '0.75rem' }}></i>
                                                 </button>
                                             )}
                                         </div>
                                         <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '6px', padding: '0 4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            {isAdmin && <i className="fas fa-check-double" style={{ color: 'var(--primary)', opacity: 0.8 }}></i>}
+                                            {isAdmin && <i className="fas fa-check-double" style={{ color: msg.is_read ? 'var(--primary)' : '#94a3b8', opacity: 0.8 }}></i>}
                                         </div>
                                     </div>
                                 )
@@ -364,8 +391,8 @@ export default function ChatPage() {
                     </div>
 
                     {/* Chat Input */}
-                    <div style={{ padding: '20px', background: '#fff', borderTop: '1px solid #e2e8f0' }}>
-                        <form onSubmit={handleSend} style={{ display: 'flex', gap: '12px' }}>
+                    <div style={{ padding: isMobile ? '12px' : '20px', paddingLeft: isMobile ? '56px' : '20px', background: '#fff', borderTop: '1px solid #e2e8f0' }}>
+                        <form onSubmit={handleSend} style={{ display: 'flex', gap: isMobile ? '8px' : '12px' }}>
                             <input 
                                 type="text" 
                                 value={inputText}

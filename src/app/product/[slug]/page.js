@@ -158,22 +158,22 @@ export default function ProductDetail() {
         if (ratingDist[r.rating] !== undefined) ratingDist[r.rating]++;
     });
 
-    const handleAddToCart = () => {
+    const handleAddToCart = async () => {
         if (stockTotal <= 0) {
             showToast("Maaf, stok habis!", "error")
             return
         }
-        addToCart(product, qty, selectedVariant)
-        showToast("Berhasil dimasukkan ke keranjang", "success")
+        const success = await addToCart(product, qty, selectedVariant)
+        if (success) showToast("Berhasil dimasukkan ke keranjang", "success")
     }
 
-    const handleBuyNow = () => {
+    const handleBuyNow = async () => {
         if (stockTotal <= 0) {
             showToast("Maaf, stok habis!", "error")
             return
         }
-        addToCart(product, qty, selectedVariant)
-        router.push("/keranjang")
+        const success = await addToCart(product, qty, selectedVariant)
+        if (success) router.push("/keranjang")
     }
 
     function getCartQty(productId) {
@@ -552,7 +552,7 @@ export default function ProductDetail() {
                                     </div>
                                     <div className="prodFooter" onClick={(e) => e.stopPropagation()}>
                                         {relQtyInCart <= 0 ? (
-                                            <button className="btn btnPrimary" onClick={(e) => { e.stopPropagation(); addToCart(p); }} disabled={relStockTotal <= 0}>
+                                            <button className="btn btnPrimary" onClick={async (e) => { e.stopPropagation(); const s = await addToCart(p); if (s) showToast("Dimasukkan ke keranjang", "success"); }} disabled={relStockTotal <= 0}>
                                                 <i className="fas fa-cart-plus"></i> Tambah
                                             </button>
                                         ) : (

@@ -12,6 +12,7 @@ export default function Navbar() {
   const showToast = useUIStore((state) => state.showToast)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isNotifOpen, setIsNotifOpen] = useState(false)
+  const [userProfile, setUserProfile] = useState(null)
   const navRightRef = useRef(null)
 
   useEffect(() => {
@@ -33,11 +34,23 @@ export default function Navbar() {
     // Ambil sesi saat komponen dimuat
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
+      if (session) {
+        supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({data}) => {
+          if (data) setUserProfile(data)
+        })
+      }
     })
 
     // Dengarkan perubahan status otentikasi (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
+      if (session) {
+        supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({data}) => {
+          if (data) setUserProfile(data)
+        })
+      } else {
+        setUserProfile(null)
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -95,7 +108,7 @@ export default function Navbar() {
           </div>
           <img src="/logo.png" alt="SembakoBerkah Logo" className="logo-img" style={{height: '32px', width: 'auto', objectFit: 'contain'}} />
         </Link>
-        <div style={{ flex: 1, padding: '0 24px', order: 2, display: 'flex', justifyContent: 'center' }}>
+        <div className="nav-search-wrapper">
             {pathname === '/' && (
                 <div className="nav-search-container" style={{ width: '100%' }}>
                     <div style={{position: 'relative', width: '100%'}}>
@@ -113,7 +126,7 @@ export default function Navbar() {
             )}
         </div>
 
-        <div className="navRight" ref={navRightRef} style={{ display: 'flex', alignItems: 'center', gap: '4px', order: 3 }}>
+        <div className="navRight" ref={navRightRef} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           
           {/* Keranjang (Cart) Icon */}
           <Link href="/keranjang" style={{ textDecoration: 'none' }}>
@@ -190,12 +203,14 @@ export default function Navbar() {
                       {session.user?.user_metadata?.full_name || session.user?.email?.split('@')[0] || 'User'}
                     </div>
                     <div style={{fontSize: '0.75rem', color: 'var(--muted)', fontWeight: 600}}>
-                      Role: <span style={{color: session.user?.user_metadata?.role === 'owner' ? 'var(--primary)' : 'var(--muted)'}}>{session.user?.user_metadata?.role === 'owner' ? 'Owner' : 'Customer'}</span>
+                      Role: <span style={{color: (userProfile?.role || session.user?.user_metadata?.role)?.toLowerCase() === 'owner' ? 'var(--primary)' : 'var(--muted)'}}>
+                        {(userProfile?.role || session.user?.user_metadata?.role)?.toLowerCase() === 'owner' ? 'Owner' : 'Customer'}
+                      </span>
                     </div>
                   </div>
                   
                   <div style={{display: 'flex', flexDirection: 'column', padding: '8px 0'}}>
-                    {session.user?.user_metadata?.role === 'owner' && (
+                    {(userProfile?.role || session.user?.user_metadata?.role)?.toLowerCase() === 'owner' && (
                       <Link href="/dashboard" onClick={() => setIsDropdownOpen(false)} style={{padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'var(--dark)', fontSize: '0.85rem', fontWeight: 600}}>
                         <i className="fas fa-store" style={{color: 'var(--primary)', width: '16px', textAlign: 'center'}}></i> Ke Dashboard Toko
                       </Link>
@@ -239,13 +254,17 @@ export default function Navbar() {
         .brand { order: 1; }
         .navRight { order: 4; margin-left: auto; }
         .navMenu { order: 2; flex: 1; }
-        .nav-search-container {
-          order: 3;
+        .nav-search-wrapper {
+          order: 2;
           flex: 1;
-          padding: 0 20px;
-          max-width: 600px;
+          padding: 0 24px;
           display: flex;
-          align-items: center;
+          justify-content: center;
+        }
+        .nav-search-container {
+          width: 100%;
+          max-width: 600px;
+          position: relative;
         }
         .login-btn {
           margin-left: 10px;
@@ -279,13 +298,13 @@ export default function Navbar() {
           }
           
           /* Move search below top bar */
-          .nav-search-container {
+          .nav-search-wrapper {
             order: 3;
             width: 100%;
             max-width: 100%;
             flex: 0 0 100%;
-            padding: 0;
-            margin-top: 4px;
+            padding: 0 4px;
+            margin-top: 8px;
           }
           
           /* Move menu below search */

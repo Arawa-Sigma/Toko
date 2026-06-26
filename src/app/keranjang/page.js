@@ -147,13 +147,13 @@ export default function KeranjangPage() {
                     </Link>
                 </div>
             ) : (
-                <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+                <div className="cart-layout" style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
                     
                     {/* KIRI: DAFTAR PRODUK */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div className="cart-items-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
                         
                         {/* HEADER TABEL */}
-                        <div style={{ background: '#fff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #f1f5f9', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
+                        <div className="cart-header" style={{ background: '#fff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #f1f5f9', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
                             <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>
                                 <input 
                                     type="checkbox" 
@@ -177,7 +177,7 @@ export default function KeranjangPage() {
                                 const isWishlisted = wishlist.includes(item.productId);
 
                                 return (
-                                    <div key={item.id} style={{ padding: '16px', borderBottom: index < enrichedCart.length - 1 ? '1px solid #f1f5f9' : 'none', opacity: isInvalid ? 0.6 : 1, display: 'flex', alignItems: 'center', fontSize: '0.85rem' }}>
+                                    <div key={item.id} className="cart-item-row" style={{ padding: '16px', borderBottom: index < enrichedCart.length - 1 ? '1px solid #f1f5f9' : 'none', opacity: isInvalid ? 0.6 : 1, display: 'flex', alignItems: 'center', fontSize: '0.85rem' }}>
                                         {/* CHECKBOX */}
                                         <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>
                                             <input 
@@ -190,7 +190,7 @@ export default function KeranjangPage() {
                                         </div>
 
                                         {/* PRODUK (Image + Info) */}
-                                        <div style={{ flex: 2, display: 'flex', gap: '12px', alignItems: 'flex-start', paddingRight: '12px' }}>
+                                        <div className="cart-item-product" style={{ flex: 2, display: 'flex', gap: '12px', alignItems: 'flex-start', paddingRight: '12px' }}>
                                             <img src={item.image_url || 'https://cdn-icons-png.flaticon.com/512/3081/3081840.png'} style={{ width: '60px', height: '60px', borderRadius: '6px', objectFit: 'cover', border: '1px solid #f1f5f9' }} />
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                                 <div style={{ fontWeight: 600, color: 'var(--dark)', lineHeight: '1.3', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
@@ -200,16 +200,19 @@ export default function KeranjangPage() {
                                                 {item.variantName && <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Variasi: {item.variantName}</div>}
                                                 {item.category && <div style={{ color: '#10b981', fontSize: '0.7rem', fontWeight: 700 }}>{item.category}</div>}
                                                 {item.isAvailable && item.qty > item.max_stock && <div style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 700 }}>Sisa stok: {item.max_stock}</div>}
+                                                <div className="mobile-price" style={{ display: 'none', color: '#64748b', fontWeight: 600, fontSize: '0.85rem', marginTop: '4px' }}>
+                                                    Rp{item.price.toLocaleString('id-ID')}
+                                                </div>
                                             </div>
                                         </div>
 
                                         {/* HARGA SATUAN */}
-                                        <div style={{ flex: 1, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+                                        <div className="cart-item-price" style={{ flex: 1, textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
                                             Rp{item.price.toLocaleString('id-ID')}
                                         </div>
 
                                         {/* KUANTITAS */}
-                                        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                                        <div className="cart-item-qty" style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', opacity: item.isAvailable ? 1 : 0.5 }}>
                                                 <button style={{ border: 'none', borderRight: '1px solid #cbd5e1', background: '#f8fafc', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: item.qty <= 1 || !item.isAvailable ? '#cbd5e1' : '#64748b', fontWeight: 800 }} onClick={() => updateCartQty(item.id, item.qty - 1)} disabled={item.qty <= 1 || !item.isAvailable}>-</button>
                                                 <div style={{ width: '36px', textAlign: 'center', fontSize: '0.85rem', fontWeight: 600, color: 'var(--dark)' }}>{item.qty}</div>
@@ -218,12 +221,12 @@ export default function KeranjangPage() {
                                         </div>
 
                                         {/* TOTAL HARGA */}
-                                        <div style={{ flex: 1, textAlign: 'center', color: '#ef4444', fontWeight: 700 }}>
+                                        <div className="cart-item-total" style={{ flex: 1, textAlign: 'center', color: '#ef4444', fontWeight: 700 }}>
                                             Rp{(item.price * item.qty).toLocaleString('id-ID')}
                                         </div>
 
                                         {/* AKSI */}
-                                        <div style={{ width: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                        <div className="cart-item-action" style={{ width: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                                             <div style={{ color: 'var(--dark)', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem', transition: 'color 0.2s' }} onClick={() => removeFromCart(item.id)}>Hapus</div>
                                             <div style={{ color: '#f97316', cursor: 'pointer', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                 Serupa <i className="fas fa-caret-down"></i>
@@ -234,21 +237,11 @@ export default function KeranjangPage() {
                             })}
                         </div>
 
-                        {/* REKOMENDASI PRODUK */}
-                        {!loadingProducts && products.length > 0 && (
-                            <div style={{ marginTop: '40px' }}>
-                                <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--dark)', marginBottom: '16px' }}>Rekomendasi untukmu</h2>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-                                    {products.filter(p => !cart.some(c => c.productId === p.id)).slice(0, 8).map(product => (
-                                        <ProductCard key={product.id} product={product} />
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+
                     </div>
 
                     {/* KANAN: RINGKASAN */}
-                    <div style={{ width: '350px', flexShrink: 0, position: 'sticky', top: '100px' }}>
+                    <div className="cart-summary" style={{ width: '350px', flexShrink: 0, position: 'sticky', top: '100px' }}>
                         <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #f1f5f9', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', padding: '20px' }}>
                             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--dark)', margin: '0 0 20px 0' }}>Ringkasan belanja</h3>
                             
@@ -302,7 +295,35 @@ export default function KeranjangPage() {
                 </div>
             )}
 
+            {/* REKOMENDASI PRODUK (Dipindah ke luar cart-layout agar selalu di bawah) */}
+            {enrichedCart.length > 0 && !loadingProducts && products.length > 0 && (
+                <div style={{ marginTop: '40px' }}>
+                    <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--dark)', marginBottom: '16px' }}>Rekomendasi untukmu</h2>
+                    <div className="recommendation-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                        {products.filter(p => !cart.some(c => c.productId === p.id)).slice(0, 8).map(product => (
+                            <ProductCard key={product.id} product={product} />
+                        ))}
+                    </div>
+                </div>
+            )}
+
             </main>
+
+            <style dangerouslySetInnerHTML={{__html: `
+                @media (max-width: 768px) {
+                    .cart-layout { flex-direction: column !important; }
+                    .cart-summary { width: 100% !important; position: static !important; }
+                    .cart-header { display: none !important; }
+                    .cart-item-row { flex-wrap: wrap !important; padding: 16px 12px !important; }
+                    .cart-item-product { flex: 0 0 calc(100% - 40px) !important; padding-right: 0 !important; margin-bottom: 12px; }
+                    .cart-item-price { display: none !important; }
+                    .mobile-price { display: block !important; }
+                    .cart-item-qty { flex: 1 !important; justify-content: flex-start !important; }
+                    .cart-item-total { flex: 1 !important; text-align: right !important; font-size: 1rem !important; }
+                    .cart-item-action { width: 100% !important; flex-direction: row !important; justify-content: flex-end !important; margin-top: 12px; border-top: 1px solid #f1f5f9; padding-top: 12px; }
+                    .recommendation-grid { grid-template-columns: repeat(2, 1fr) !important; }
+                }
+            `}} />
         </div>
     )
 }
