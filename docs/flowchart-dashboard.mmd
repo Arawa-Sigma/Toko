@@ -1,7 +1,7 @@
 flowchart TD
     A([Start]) --> B[Buka /dashboard]
     B --> C{Middleware Check: Session & Role = owner?}
-    C -->|Tidak (Belum Login / Bukan Owner)| D[Redirect ke /auth atau /]
+    C -->|"Tidak (Belum Login / Bukan Owner)"| D[Redirect ke /auth atau /]
     C -->|Ya| E[Dashboard Layout dengan Sidebar]
 
     E --> F[Fetch Unread Notifications Count dari Supabase]
@@ -34,7 +34,7 @@ flowchart TD
     J --> J1[Fetch orders dari Supabase - Desc by created_at]
     J1 --> J2[Filter berdasarkan Status + Pencarian]
     J2 --> J3{Aksi Pesanan}
-    J3 -->|Update Status| J4[supabase.update orders.status]
+    J3 -->|Update Status| J4["supabase.update orders.status"]
     J4 --> J5{Status Baru}
     J5 -->|Belum Bayar| J6[Status: Menunggu Pembayaran]
     J5 -->|Sedang Dikemas| J7[Status: Sedang Dikemas]
@@ -59,7 +59,7 @@ flowchart TD
     K3 -->|Hapus Produk| K13[Konfirmasi Hapus]
     K13 -->|OK| K14[DELETE dari Tabel products]
     K14 --> K10
-    K3 -->|Aktifkan / Nonaktifkan| K15[UPDATE products.status]
+    K3 -->|"Aktifkan / Nonaktifkan"| K15[UPDATE products.status]
 
     %% RETUR
     L --> L1[Fetch returns JOIN orders dari Supabase]
@@ -68,29 +68,29 @@ flowchart TD
     L2 -->|Ya| L4[Tampil Kartu Retur]
     L4 --> L5{Aksi Retur}
     L5 -->|Setujui| L6[UPDATE returns.status = Disetujui]
-    L6 --> L7[UPDATE orders.status = Dikembalikan Retur]
+    L6 --> L7["UPDATE orders.status = Dikembalikan Retur"]
     L5 -->|Tolak| L8[UPDATE returns.status = Ditolak]
     L8 --> L9[UPDATE orders.status = Selesai]
 
     %% KEUANGAN
     M --> M1[Fetch orders status=Selesai + expenses]
     M1 --> M2[Hitung Omzet dari Pesanan Selesai]
-    M2 --> M3[Asumsikan HPP 70 persen dari Omzet]
+    M2 --> M3["Asumsikan HPP 70% dari Omzet"]
     M3 --> M4[Total Pengeluaran dari Tabel expenses]
-    M4 --> M5[Hitung Laba Bersih = Omzet - HPP - Pengeluaran]
-    M5 --> M6[Tampil 4 Kartu: Omzet, Pengeluaran, HPP, Laba Bersih]
+    M4 --> M5["Hitung Laba Bersih = Omzet - HPP - Pengeluaran"]
+    M5 --> M6["Tampil 4 Kartu: Omzet, Pengeluaran, HPP, Laba Bersih"]
     M6 --> M7[Klik Tambah Pengeluaran]
     M7 --> M8[Form: Tanggal, Kategori, Catatan, Jumlah]
     M8 --> M9[INSERT ke Tabel expenses]
     M9 --> M1
 
     %% PENGGUNA
-    N --> N1[Fetch users via RPC get_all_users atau fallback profiles]
+    N --> N1["Fetch users via RPC get_all_users atau fallback profiles"]
     N1 --> N4[Tampil Tabel Semua Pengguna]
     N4 --> N2[Filter dengan Search Bar]
     N2 --> N3{Aksi Pengguna}
-    N3 -->|Ganti Role Manual| N5[UPDATE profiles.role = Owner/Admin/Logistik/Customer]
-    N3 -->|Edit Nama & Email| N6[UPDATE profiles.name & email]
+    N3 -->|Ganti Role Manual| N5["UPDATE profiles.role = Owner/Admin/Logistik/Customer"]
+    N3 -->|"Edit Nama & Email"| N6["UPDATE profiles.name & email"]
     N3 -->|Hapus Pengguna| N7[DELETE dari Tabel profiles]
 
     %% DISKON
@@ -98,14 +98,14 @@ flowchart TD
     O1 --> O2{Tab Aktif}
     O2 -->|Diskon Produk| O3[Tampil Tabel Produk dengan Input Diskon]
     O3 --> O4{Aksi Diskon}
-    O4 -->|Edit Diskon Per Produk| O5[Input % Diskon + Tanggal Berakhir]
-    O5 --> O6[UPDATE products.discount + discount_end_date]
+    O4 -->|Edit Diskon Per Produk| O5["Input % Diskon + Tanggal Berakhir"]
+    O5 --> O6["UPDATE products.discount + discount_end_date"]
     O4 -->|Hapus Diskon| O7[SET discount = 0]
     O4 -->|Bulk Diskon| O8[Input % untuk Semua Produk]
     O8 --> O9[UPDATE semua products.discount]
     O2 -->|Voucher| O10[Tampil Daftar Voucher]
     O10 --> O11[Klik Buat Voucher]
-    O11 --> O12[Input: Kode, Jenis, Nilai, Min Belanja, Batas Diskon, Batas Pakai]
+    O11 --> O12["Input: Kode, Jenis, Nilai, Min Belanja, Batas Diskon, Batas Pakai"]
     O12 --> O13[INSERT ke Tabel vouchers]
     O10 --> O14[Hapus Voucher]
     O14 --> O15[DELETE dari Tabel vouchers]
