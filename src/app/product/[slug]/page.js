@@ -111,19 +111,19 @@ export default function ProductDetail() {
     let hasDisc = Number(product.discount || 0) > 0
     let discountEndText = ""
     let isUnlimited = false
-    
+
     if (hasDisc && product.discount_end_date) {
         const now = new Date()
         const endDate = new Date(product.discount_end_date)
         const diff = endDate - now
-        
+
         if (diff <= 0) {
             hasDisc = false // Expired
         } else {
             const days = Math.floor(diff / (1000 * 60 * 60 * 24))
             const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
             const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-            
+
             if (days > 0) discountEndText = `${days} hari`
             else if (hours > 0) discountEndText = `${hours} jam`
             else discountEndText = `${mins} menit`
@@ -287,7 +287,7 @@ export default function ProductDetail() {
                                     </div>
                                 </>
                             )}
-                            
+
                             {infoTab === 'spesifikasi' && (
                                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px' }}>
                                     {product.specifications && product.specifications.map((s, idx) => [

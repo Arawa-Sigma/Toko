@@ -94,7 +94,7 @@ flowchart TD
     S --> M
 
     M -->|Role: owner| T[Dashboard Admin /dashboard]
-    M -->|Role: user / tidak ada| U[Halaman Utama / Etalase]
+    M -->|Role: customer / tidak ada| U[Halaman Utama / Etalase]
 
     D -->|Ya| U
 
@@ -157,14 +157,16 @@ flowchart TD
     CCC -->|Produk| FFF[CRUD Produk]
     CCC -->|Retur| GGG[Kelola Permintaan Retur]
     CCC -->|Keuangan| HHH[Laporan Keuangan dan Pengeluaran]
-    CCC -->|Pengguna| III[Kelola User dan Role Request]
+    CCC -->|Pengguna| III[Kelola Pengguna Manual]
     CCC -->|Diskon| JJJ[Set Diskon Produk dan Voucher]
     CCC -->|Pesan| KKK[Chat Realtime dengan Pelanggan]
     CCC -->|Notifikasi| LLL[Kelola Notifikasi Sistem]
 
-    III --> MMM{Aksi Role Request}
-    MMM -->|Approve| NNN[Update Role Profil jadi Owner]
-    MMM -->|Reject| OOO[Tolak Permintaan]
+    III --> MMM{Aksi Pengguna}
+    MMM -->|Cari Pengguna| NNN[Filter ID/Nama/Email]
+    MMM -->|Edit Pengguna| OOO[Update Profil Pengguna]
+    MMM -->|Hapus Pengguna| PPP[Delete dari Tabel Profil]
+    MMM -->|Ganti Role| QQQ[Set Role Owner / Admin / Logistik / Customer]
 
     %% Menambahkan oval End pada titik akhir
     TT --> Z_END([End])
@@ -183,7 +185,8 @@ flowchart TD
     LLL --> Z_END([End])
     NNN --> Z_END([End])
     OOO --> Z_END([End])
-
+    PPP --> Z_END([End])
+    QQQ --> Z_END([End])
 ```
 
 ---

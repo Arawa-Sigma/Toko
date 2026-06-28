@@ -94,7 +94,8 @@ flowchart TD
     CCC -->|Pengguna| III[Kelola Pengguna Manual]
     CCC -->|Diskon| JJJ[Set Diskon Produk dan Voucher]
     CCC -->|Pesan| KKK[Chat Realtime dengan Pelanggan]
-    CCC -->|Notifikasi| LLL[Kelola Notifikasi Sistem]    III --> MMM{Aksi Pengguna}
+    CCC -->|Notifikasi| LLL[Kelola Notifikasi Sistem]
+    III --> MMM{Aksi Pengguna}
     MMM -->|Cari Pengguna| NNN[Filter ID/Nama/Email]
     MMM -->|Edit Pengguna| OOO[Update Profil Pengguna]
     MMM -->|Hapus Pengguna| PPP[Delete dari Tabel Profil]
@@ -117,3 +118,5 @@ flowchart TD
     LLL --> Z_END([End])
     NNN --> Z_END([End])
     OOO --> Z_END([End])
+    PPP --> Z_END([End])
+    QQQ --> Z_END([End])
