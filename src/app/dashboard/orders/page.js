@@ -39,8 +39,14 @@ export default function OrdersPage() {
     }
 
     async function updateOrderStatus(id, newStatus) {
-        await supabase.from('orders').update({ status: newStatus }).eq('id', id)
-        fetchOrders()
+        const originalOrders = [...orders]
+        setOrders(orders.map(o => o.id === id ? { ...o, status: newStatus } : o))
+        
+        const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', id)
+        if (error) {
+            alert("Gagal merubah status: " + error.message)
+            setOrders(originalOrders)
+        }
     }
 
     function getStatusBadge(status) {

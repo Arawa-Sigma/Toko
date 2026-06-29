@@ -207,8 +207,8 @@ export default function ProfilePage() {
 
     const handleSaveMetadata = async () => {
         if (!session?.user) return
-        if (phone && (!phone.startsWith("08") || phone.length !== 12)) {
-            showToast("Nomor telepon harus diawali dengan 08 dan 12 digit!", "error")
+        if (phone && (!phone.startsWith("08") || phone.length < 10 || phone.length > 13)) {
+            showToast("Nomor telepon harus diawali dengan 08 dan 10-13 digit!", "error")
             return
         }
         try {
@@ -244,8 +244,8 @@ export default function ProfilePage() {
             showToast("Nama lengkap, nomor telepon, dan jalan harus diisi!", "error")
             return
         }
-        if (!newAddress.phone.startsWith("08") || newAddress.phone.length !== 12) {
-            showToast("Nomor telepon harus diawali dengan 08 dan berjumlah 12 digit!", "error")
+        if (!newAddress.phone.startsWith("08") || newAddress.phone.length < 10 || newAddress.phone.length > 13) {
+            showToast("Nomor telepon harus diawali dengan 08 dan berjumlah 10-13 digit!", "error")
             return
         }
         
@@ -651,7 +651,7 @@ export default function ProfilePage() {
                                             value={phone} 
                                             onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} 
                                             placeholder="Contoh: 081234567890" 
-                                            maxLength={12}
+                                            maxLength={13}
                                             style={{ width: '100%', maxWidth: '250px' }} 
                                         />
                                     </div>
@@ -888,7 +888,7 @@ export default function ProfilePage() {
                                     <input type="text" className="input" placeholder="Nama Lengkap" value={newAddress.name} onChange={(e) => setNewAddress({...newAddress, name: e.target.value})} style={{ width: '100%' }} />
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <input type="tel" className="input" placeholder="Nomor Telepon (08...)" value={newAddress.phone} maxLength={12} onChange={(e) => setNewAddress({...newAddress, phone: e.target.value.replace(/\D/g, '')})} style={{ width: '100%' }} />
+                                    <input type="tel" className="input" placeholder="Nomor Telepon (08...)" value={newAddress.phone} maxLength={13} onChange={(e) => setNewAddress({...newAddress, phone: e.target.value.replace(/\D/g, '')})} style={{ width: '100%' }} />
                                 </div>
                             </div>
                             

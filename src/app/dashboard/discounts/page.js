@@ -112,7 +112,8 @@ export default function DiscountsPage() {
         discount_type: 'percent',
         min_purchase: 0,
         max_discount: '',
-        quota: ''
+        quota: '',
+        valid_until: ''
     })
 
     async function handleCreateVoucher(e) {
@@ -123,7 +124,8 @@ export default function DiscountsPage() {
             discount_type: newVoucher.discount_type,
             min_purchase: Number(newVoucher.min_purchase) || 0,
             max_discount: newVoucher.discount_type === 'percent' && newVoucher.max_discount ? Number(newVoucher.max_discount) : null,
-            quota: newVoucher.quota ? Number(newVoucher.quota) : null
+            quota: newVoucher.quota ? Number(newVoucher.quota) : null,
+            valid_until: newVoucher.valid_until || null
         }
         
         try {
@@ -134,7 +136,7 @@ export default function DiscountsPage() {
             } else {
                 showToast("Berhasil membuat kode promo baru!")
                 setIsAddingVoucher(false)
-                setNewVoucher({ code: '', discount_amount: '', discount_type: 'percent', min_purchase: 0, max_discount: '', quota: '' })
+                setNewVoucher({ code: '', discount_amount: '', discount_type: 'percent', min_purchase: 0, max_discount: '', quota: '', valid_until: '' })
                 fetchVouchers()
             }
         } catch (err) {
@@ -368,15 +370,21 @@ export default function DiscountsPage() {
                                     </div>
                                     {newVoucher.discount_type === 'percent' && (
                                         <div>
-                                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)', marginBottom: '8px' }}>Maksimal Diskon (Rp)</label>
-                                            <input type="number" min="0" placeholder="Opsional" value={newVoucher.max_discount} onChange={e => setNewVoucher({...newVoucher, max_discount: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }} />
-                                        </div>
-                                    )}
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)', marginBottom: '8px' }}>Maksimal Diskon (Rp)</label>
+                                        <input type="number" min="0" placeholder="Opsional" value={newVoucher.max_discount} onChange={e => setNewVoucher({...newVoucher, max_discount: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                                    </div>
+                                )}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)', marginBottom: '8px' }}>Kuota Penggunaan Total</label>
                                         <input type="number" min="1" placeholder="Kosongkan jika tidak terbatas" value={newVoucher.quota} onChange={e => setNewVoucher({...newVoucher, quota: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }} />
                                     </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)', marginBottom: '8px' }}>Tanggal Berlaku (Opsional)</label>
+                                        <input type="date" value={newVoucher.valid_until} onChange={e => setNewVoucher({...newVoucher, valid_until: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                                    </div>
                                 </div>
+                            </div>
                                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                                     <button type="button" onClick={() => setIsAddingVoucher(false)} style={{ padding: '12px 24px', background: 'transparent', border: '1px solid #cbd5e1', color: 'var(--dark)', fontWeight: 600, borderRadius: '8px', cursor: 'pointer' }}>Batal</button>
                                     <button type="submit" style={{ padding: '12px 24px', background: '#10b981', color: '#fff', border: 'none', fontWeight: 700, borderRadius: '8px', cursor: 'pointer' }}>Simpan Promo</button>
@@ -402,7 +410,7 @@ export default function DiscountsPage() {
                                             <th style={{ padding: '16px', fontSize: '0.85rem', color: '#64748b', fontWeight: 700 }}>KODE PROMO</th>
                                             <th style={{ padding: '16px', fontSize: '0.85rem', color: '#64748b', fontWeight: 700 }}>BESAR DISKON</th>
                                             <th style={{ padding: '16px', fontSize: '0.85rem', color: '#64748b', fontWeight: 700 }}>SYARAT BELANJA</th>
-                                            <th style={{ padding: '16px', fontSize: '0.85rem', color: '#64748b', fontWeight: 700 }}>KUOTA</th>
+                                            <th style={{ padding: '16px', fontSize: '0.85rem', color: '#64748b', fontWeight: 700 }}>KUOTA / BERLAKU HINGGA</th>
                                             <th style={{ padding: '16px', fontSize: '0.85rem', color: '#64748b', fontWeight: 700, textAlign: 'right' }}>AKSI</th>
                                         </tr>
                                     </thead>
@@ -422,7 +430,8 @@ export default function DiscountsPage() {
                                                     {v.min_purchase > 0 ? `Min. ${formatRupiah(v.min_purchase)}` : 'Tanpa minimum'}
                                                 </td>
                                                 <td style={{ padding: '16px', fontSize: '0.9rem', color: 'var(--muted)' }}>
-                                                    {v.quota ? `${v.used_count || 0} / ${v.quota}` : 'Tidak terbatas'}
+                                                    <div>Kuota: {v.quota ? `${v.used_count || 0} / ${v.quota}` : 'Tidak terbatas'}</div>
+                                                    <div style={{ marginTop: '4px' }}>Berlaku s/d: {v.valid_until ? new Date(v.valid_until).toLocaleDateString('id-ID') : 'Tidak terbatas'}</div>
                                                 </td>
                                                 <td style={{ padding: '16px', textAlign: 'right' }}>
                                                     <button onClick={() => handleDeleteVoucher(v.id)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', width: '32px', height: '32px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>

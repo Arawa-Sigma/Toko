@@ -40,7 +40,7 @@ export default function CheckoutPage() {
         if (!newAddress.name) errors.name = "Nama lengkap harus diisi"
         if (!newAddress.phone) errors.phone = "Nomor telepon harus diisi"
         else if (!newAddress.phone.startsWith("08")) errors.phone = "Nomor telepon harus diawali dengan '08'"
-        else if (newAddress.phone.length !== 12) errors.phone = "Nomor telepon harus persis 12 digit"
+        else if (newAddress.phone.length < 10 || newAddress.phone.length > 13) errors.phone = "Nomor telepon harus 10-13 digit"
         if (!newAddress.region) errors.region = "Provinsi, Kota, Kecamatan harus diisi"
         if (!newAddress.street) errors.street = "Alamat lengkap harus diisi"
 
@@ -136,9 +136,16 @@ export default function CheckoutPage() {
     let adminFee = 0
     let insuranceFee = useInsurance ? 2000 : 0
     let shippingFee = 0
-    if (courier === "JNE") shippingFee = 15000
-    else if (courier === "GoSend") shippingFee = 25000
-    else if (courier !== "Ambil Sendiri") shippingFee = 15000 // Default for others
+    if (courier !== "Ambil Sendiri") {
+        let baseOngkir = courier === "GoSend" ? 20000 : 10000;
+        if (addresses.length > 0 && addresses[selectedAddressIndex]) {
+            const regionStr = addresses[selectedAddressIndex].region || "";
+            const extraFee = (regionStr.length % 5) * 2000;
+            shippingFee = baseOngkir + extraFee;
+        } else {
+            shippingFee = baseOngkir;
+        }
+    }
     
     let discount = 0
     if (appliedVoucher) {
@@ -462,7 +469,7 @@ export default function CheckoutPage() {
                                         {formErrors.name && <div style={{ color: '#ee4d2d', fontSize: '0.8rem', marginTop: '6px', fontWeight: 600 }}>{formErrors.name}</div>}
                                     </div>
                                     <div style={{ flex: 1 }}>
-                                        <input type="tel" className="input" placeholder="Nomor Telepon (08...)" value={newAddress.phone} maxLength={12} onChange={(e) => {setNewAddress({...newAddress, phone: e.target.value.replace(/\D/g, '')}); setFormErrors({...formErrors, phone: ''})}} style={{ width: '100%', border: formErrors.phone ? '1px solid #ee4d2d' : '' }} />
+                                        <input type="tel" className="input" placeholder="Nomor Telepon (08...)" value={newAddress.phone} maxLength={13} onChange={(e) => {setNewAddress({...newAddress, phone: e.target.value.replace(/\D/g, '')}); setFormErrors({...formErrors, phone: ''})}} style={{ width: '100%', border: formErrors.phone ? '1px solid #ee4d2d' : '' }} />
                                         {formErrors.phone && <div style={{ color: '#ee4d2d', fontSize: '0.8rem', marginTop: '6px', fontWeight: 600 }}>{formErrors.phone}</div>}
                                     </div>
                                 </div>

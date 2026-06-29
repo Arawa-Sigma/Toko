@@ -121,6 +121,13 @@ export default function KeranjangPage() {
                 return;
             }
 
+            // Validasi masa berlaku
+            if (data.valid_until && new Date(data.valid_until) < new Date()) {
+                showToast("Masa berlaku promo ini sudah habis!", "error");
+                setPromoLoading(false);
+                return;
+            }
+
             setAppliedVoucher(data);
             setPromoInput('');
             showToast("Promo berhasil digunakan!", "success");
